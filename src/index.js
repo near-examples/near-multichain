@@ -5,58 +5,53 @@ import { Chain } from '@ethereumjs/common'
 
 // CONSTANTS
 const TGAS = 1000000000000;
-const DERIVATION_PATH = "ethereum-1";
-const MPC_CONTRACT = 'multichain-testnet-2.testnet';
+const DERIVATION_PATH = '';
+const MPC_CONTRACT = 'canhazgas.testnet';
 
 // ETHEREUM
-const ETH_SENDER = "0x46Dd36F3235C748961427854948B32BD412AdD3c";
 const Eth = new Ethereum('https://rpc2.sepolia.org', Chain.Sepolia);
 
 // NEAR WALLET
 const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
 
-async function requestReconstructSignature() {
-  const { transaction, big_r, big_s } = await requestSignature(ETH_SENDER);
-  const signature = await reconstructSignature(transaction, big_r, big_s);
-  // await Eth.relayTransaction(signature);
-}
+async function chainSignature() {
+  // get the foreign address for the current account
+  const eth_sender = await wallet.viewMethod(
+    { contractId: MPC_CONTRACT, method: 'get_foreign_address_for', args: { account_id: wallet.accountId } }
+  );
 
-async function requestSignature(eth_sender) {
   setStatus('Creating transaction');
   const { transaction, payload } = await Eth.createPayload(eth_sender);
 
-  setStatus(`Asking ${MPC_CONTRACT} to sign the transaction using account "${DERIVATION_PATH}"... this might take a while`);
-  // Request signature from MPC
-  const request = await wallet.callMethod({ contractId: MPC_CONTRACT, method: 'sign', args: { payload, path: DERIVATION_PATH }, gas: 300 * TGAS },);
-  const [big_r, big_s] = await wallet.getTransactionResult(request.transaction.hash);
-  return { transaction, big_r, big_s };
-}
+  setStatus(`Asking ${MPC_CONTRACT} to sign the transaction using account ${eth_sender.slice(0, 8)}..., this might take a while`);
+  const { big_r, big_s } = await requestSignature(payload, DERIVATION_PATH);
 
-async function reconstructSignature(transaction, big_r, big_s) {
-  // Reconstruct signature from MPC response
-  const r = BigInt('0x' + big_r.slice(2));
-  const v = big_r.slice(0, 2) === '02' ? 0n : 1n;
-  const s = BigInt('0x' + big_s);
-  const signedTransaction = transaction.addSignature(v, r, s);
+  setStatus(`Reconstructing & validating signature`);
+  const signedTransaction = Eth.reconstructSignature(transaction, big_r, big_s);
 
   // Validate signature
   if (signedTransaction.getValidationErrors().length > 0) { throw new Error("Transaction validation errors"); }
   if (!signedTransaction.verifySignature()) { throw new Error("Signature is not valid"); }
+  if (bytesToHex(signedTransaction.getSenderAddress().bytes) !== eth_sender.toLowerCase()) { throw new Error("Sender address does not match"); }
 
   setStatus(`MPC responded with the signed payload: ${bytesToHex(signedTransaction.serialize()).slice(0, 15)}...`);
-  return signedTransaction;
+
+  // await Eth.relayTransaction(signature);
+}
+
+async function requestSignature(payload, path) {
+  // Request signature from MPC
+  const request = await wallet.callMethod({ contractId: MPC_CONTRACT, method: 'sign', args: { payload, path }, gas: 300 * TGAS },);
+  const [big_r, big_s] = await wallet.getTransactionResult(request.transaction.hash);
+  return { big_r, big_s };
 }
 
 async function handleWalletCallback() {
   // if the user did not create a function call key for the MPC contract
   // they will be redirected to sign the transaction on the wallet
-
   const txHash = new URLSearchParams(window.location.search).get('transactionHashes');
   if (!txHash) return
-
-  const { transaction } = await Eth.createPayload(ETH_SENDER); // the transaction that was signed
-  const [big_r, big_s] = await wallet.getTransactionResult(txHash);
-  const signature = await reconstructSignature(transaction, big_r, big_s);
+  alert(`Logout and login again, remember to add a function call for ${MPC_CONTRACT}`)
 }
 
 // Setup on page load
@@ -73,17 +68,21 @@ const txToDisplay = { nonce: 'x', gasLimit: 21000, maxFeePerGas: 32725779198, ma
 // Button clicks
 document.querySelector('#sign-in-button').onclick = () => { wallet.signIn(); };
 document.querySelector('#sign-out-button').onclick = () => { wallet.signOut(); };
-document.querySelector('#request-button').onclick = () => { requestReconstructSignature(); };
+document.querySelector('#request-button').onclick = () => { chainSignature(); };
 
 // UI: Hide signed-in elements
 function signedOutUI() { hide('#signed-in'); hide('#sign-out-button'); }
 
 // UI: Hide signed-out elements
-function signedInUI() {
+async function signedInUI() {
   hide('#signed-out');
   hide('#sign-in-button');
 
   setStatus('You can request a signature now');
+
+  const eth_sender = await wallet.viewMethod({ contractId: MPC_CONTRACT, method: 'get_foreign_address_for', args: { account_id: wallet.accountId } });
+
+  setStatus(`Your ETH Address is: ${eth_sender}`);
 
   document.querySelectorAll('[data-behavior=account-id]').forEach(el => {
     el.innerText = wallet.accountId;

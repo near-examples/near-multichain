@@ -13,16 +13,16 @@ export class Ethereum {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce
-    const nonce = await this.web3.eth.getTransactionCount(eth_sender);
+    //const nonce = await this.web3.eth.getTransactionCount(eth_sender);
 
     // Construct transaction
     const transactionData = {
-      nonce,
+      nonce: 1,
       gasLimit: 21000,
       maxFeePerGas: 32725779198,
       maxPriorityFeePerGas: 1,
       to: '0xa3286628134bad128faeef82f44e99aa64085c94',
-      value: 1 + Math.floor(Math.random() * 1000000000000000),
+      value: 1,
       chain: this.chain_id,
     };
 
@@ -37,5 +37,14 @@ export class Ethereum {
     const serializedTx = bytesToHex(signedTransaction.serialize());
     const transactionResult = await this.web3.eth.sendSignedTransaction(serializedTx);
     setStatus(`Ethereum TX hash: "${transactionResult.transactionHash}"`);
+  }
+
+  reconstructSignature(transaction, big_r, big_s) {
+    const r = Buffer.from(big_r.slice(2), 'hex');
+    const s = Buffer.from(big_s, 'hex');
+    let v = big_r.startsWith('02')? 1n : 0n;
+
+    const signedTransaction = transaction.addSignature(v, r, s);
+    return signedTransaction;
   }
 }
