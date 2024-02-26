@@ -29,7 +29,7 @@ export class Ethereum {
       maxFeePerGas,
       maxPriorityFeePerGas: 1,
       to: receiver,
-      value: 10000000000000000n,
+      value: 10000000000000000n, //0.01 ETH
       chain: this.chain_id,
     };
 
