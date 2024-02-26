@@ -9,20 +9,27 @@ export class Ethereum {
     this.chain_id = chain_id;
   }
 
-  async createPayload(eth_sender) {
+  async getBalance(accountId) {
+    const balance = await this.web3.eth.getBalance(accountId)
+    const ONE_ETH = 1000000000000000000n;
+    return Number(balance * 100n / ONE_ETH) / 100;
+  }
+
+  async createPayload(sender, receiver) {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce
-    const nonce = await this.web3.eth.getTransactionCount(eth_sender);
+    const nonce = await this.web3.eth.getTransactionCount(sender);
+    const maxFeePerGas = await this.queryGasPrice();
 
     // Construct transaction
     const transactionData = {
       nonce,
       gasLimit: 21000,
-      maxFeePerGas: 32725779198,
+      maxFeePerGas,
       maxPriorityFeePerGas: 1,
-      to: '0xa3286628134bad128faeef82f44e99aa64085c94',
-      value: 1 + Math.floor(Math.random() * 1000000000000000),
+      to: receiver,
+      value: 10000000000000000n, //0.01 ETH
       chain: this.chain_id,
     };
 
@@ -35,7 +42,23 @@ export class Ethereum {
   // This code can be used to actually relay the transaction to the Ethereum network
   async relayTransaction(signedTransaction) {
     const serializedTx = bytesToHex(signedTransaction.serialize());
-    const transactionResult = await this.web3.eth.sendSignedTransaction(serializedTx);
-    setStatus(`Ethereum TX hash: "${transactionResult.transactionHash}"`);
+    const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
+    window.relayed = relayed
+    return relayed.transactionHash
+  }
+
+  reconstructSignature(transaction, big_r, big_s) {
+    const r = Buffer.from(big_r.slice(2), 'hex');
+    const s = Buffer.from(big_s, 'hex');
+    let v = big_r.startsWith('02') ? 0n : 1n;
+
+    const signedTransaction = transaction.addSignature(v, r, s);
+    return signedTransaction;
+  }
+
+  async queryGasPrice() {
+    const res = await fetch('https://sepolia.beaconcha.in/api/v1/execution/gasnow');
+    const json = await res.json();
+    return json.data.standard;
   }
 }

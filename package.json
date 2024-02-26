@@ -34,7 +34,9 @@
     "@near-wallet-selector/modal-ui": "^8.9.5",
     "@near-wallet-selector/my-near-wallet": "^8.9.5",
     "crypto-browserify": "^3.12.0",
+    "ethers": "^5.7.2",
     "near-api-js": "^3.0.2",
+    "secp256k1": "^5.0.0",
     "stream": "^0.0.2",
     "web3": "^4.5.0"
   }
