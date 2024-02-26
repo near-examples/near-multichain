@@ -43,7 +43,6 @@ export class Ethereum {
   async relayTransaction(signedTransaction) {
     const serializedTx = bytesToHex(signedTransaction.serialize());
     const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
-    window.relayed = relayed
     return relayed.transactionHash
   }
 
