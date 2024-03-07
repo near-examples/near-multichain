@@ -1,4 +1,4 @@
-import { Web3, } from "web3"
+import { Web3 } from "web3"
 import { bytesToHex } from '@ethereumjs/util';
 import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { Common } from '@ethereumjs/common'
@@ -9,13 +9,19 @@ export class Ethereum {
     this.chain_id = chain_id;
   }
 
+  async queryGasPrice() {
+    const res = await fetch('https://sepolia.beaconcha.in/api/v1/execution/gasnow');
+    const json = await res.json();
+    return json.data.rapid;
+  }
+
   async getBalance(accountId) {
     const balance = await this.web3.eth.getBalance(accountId)
     const ONE_ETH = 1000000000000000000n;
     return Number(balance * 100n / ONE_ETH) / 100;
   }
 
-  async createPayload(sender, receiver) {
+  async createPayload(sender, receiver, amount) {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce
@@ -29,36 +35,34 @@ export class Ethereum {
       maxFeePerGas,
       maxPriorityFeePerGas: 1,
       to: receiver,
-      value: 10000000000000000n, //0.01 ETH
+      value: BigInt(this.web3.utils.toWei(amount, "ether")),
       chain: this.chain_id,
     };
 
     // Return the message hash
     const transaction = FeeMarketEIP1559Transaction.fromTxData(transactionData, { common });
-    const tx_hash = transaction.getHashedMessageToSign();
-    return { transaction, payload: Array.from(tx_hash) };
+    const payload = Array.from(new Uint8Array(transaction.getHashedMessageToSign().slice().reverse()));
+    return { transaction, payload };
+  }
+
+  reconstructSignature(transaction, big_r, big_s, eth_sender) {
+    const r = Buffer.from(big_r.substring(2), 'hex');
+    const s = Buffer.from(big_s, 'hex');
+
+    const candidates = [0n, 1n].map((v) => transaction.addSignature(v, r, s));
+    const signature = candidates.find((c) => c.getSenderAddress().toString().toLowerCase() === eth_sender.toLowerCase());
+
+    if (!signature) {
+      throw new Error("Signature is not valid");
+    }
+
+    return signature;
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
   async relayTransaction(signedTransaction) {
     const serializedTx = bytesToHex(signedTransaction.serialize());
     const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
-    window.relayed = relayed
     return relayed.transactionHash
-  }
-
-  reconstructSignature(transaction, big_r, big_s) {
-    const r = Buffer.from(big_r.slice(2), 'hex');
-    const s = Buffer.from(big_s, 'hex');
-    let v = big_r.startsWith('02') ? 0n : 1n;
-
-    const signedTransaction = transaction.addSignature(v, r, s);
-    return signedTransaction;
-  }
-
-  async queryGasPrice() {
-    const res = await fetch('https://sepolia.beaconcha.in/api/v1/execution/gasnow');
-    const json = await res.json();
-    return json.data.standard;
   }
 }

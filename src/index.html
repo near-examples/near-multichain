@@ -8,9 +8,6 @@
   <link href="assets/global.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
-    crossorigin="anonymous"></script>
   <title>Welcome to NEAR</title>
 </head>
 
@@ -25,26 +22,49 @@
     </div>
   </nav>
 
-  <div class="container text-center">
-    <div class="alert alert-info mb-5" role="alert">
-      MPC Contract: signer.canhazgas.testnet <br /> [not production ready]
+  <div class="container">
+    <div class="alert alert-info mb-4 text-center" role="alert">
+      MPC Contract: multichain-testnet-2.testnet
     </div>
 
-    <h1> NEAR 🔗 ETH </h1>
-    <p class="small text-center pt-4">
-      This is a simple example of how to sign an Ethereum transaction from a NEAR account through the NEAR MPC service. In this example,
-      the transaction is fixed, and we are not relaying the signed payload, though we do validate it.
+    <h2> NEAR 🔗 ETH </h2>
+    <p class="small">
+      Safely control Ethereum accounts through our NEAR MPC service. Learn more in our <a href="https://docs.near.org/abstraction/chain-signatures"> <b>documentation</b> </a>
     </p>
 
-    <div id="signed-in">
-      <p> The transaction you will sign is: </p>
-      <div class="alert alert-warning" role="alert" id="transaction"> </div>
-      <button class="btn btn-primary mt-1" id="request-button"> Request Signature </button>
+    <div id="signed-in mt-3" style="width: 60%;">
+
+      <div class="row my-3">
+        <label class="col-sm-2 col-form-label col-form-label-sm">From:</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control form-control-sm" value="ethereum-1" id="derivation">
+          <div class="form-text" id="eth-sender"> ^ This will be used to derive your ETH Address </div>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <label class="col-sm-2 col-form-label col-form-label-sm">To:</label>
+        <div class="col-sm-10">
+          <input type="text" class="form-control form-control-sm" value="0xe0f3B7e68151E9306727104973752A415c2bcbEb" id="receiver">
+        </div>
+      </div>
+      <div class="row mb-3">
+        <label class="col-sm-2 col-form-label col-form-label-sm">Amount:</label>
+        <div class="col-sm-10">
+          <input type="number" class="form-control form-control-sm" value="0.01" id="amount">
+        </div>
+      </div>
+
+      <div class="text-center">
+      <button class="btn btn-primary text-center" id="request-button"> Request Signature </button>
+      </div>
+      <hr />
+
     </div>
 
-    <div class="mt-3">
-      Status: <span id="status"> Please login to request a signature </span>
+    <div class="mt-3 small text-center">
+      <span id="status"> Please login to request a signature </span>
     </div>
+
 
   </div>
 

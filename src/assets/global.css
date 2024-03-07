@@ -25,11 +25,6 @@ body {
   background-color: var(--shadow) !important;
 }
 
-a {
-  color: var(--fg) !important;
-  text-decoration: none !important;
-}
-
 .container{
   display: flex;
   flex: 1;
@@ -38,11 +33,6 @@ a {
   align-items: center;
   padding: 2rem;
   padding-top: 0;
-}
-
-h1 {
-  text-align: center;
-  font-size: 1.5em;
 }
 
 .greeting {
