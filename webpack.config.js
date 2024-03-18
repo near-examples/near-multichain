@@ -21,6 +21,7 @@ module.exports = {
   },
   resolve: {
     fallback: {
+      vm: require.resolve("vm-browserify"),
       https: require.resolve("https-browserify"),
       http: require.resolve("stream-http"),
       crypto: require.resolve("crypto-browserify"),
