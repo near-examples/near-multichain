@@ -21,8 +21,8 @@ html {
 body {
   margin: 0;
   height: 100vh;
-  background: linear-gradient(to bottom, transparent, rgb(var(--shadow))) rgb(var(--light-gray));
-  background-color: var(--shadow) !important;
+  /* background: linear-gradient(to bottom, transparent, rgb(var(--shadow))) rgb(var(--light-gray)); */
+  background-color: var(--bg) ;
 }
 
 .container{
