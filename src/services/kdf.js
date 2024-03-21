@@ -5,8 +5,11 @@ import keccak from 'keccak';
 import hash from 'hash.js';
 import bs58check from 'bs58check';
 
-export function najPublicKeyStrToUncompressedHexPoint(najPublicKeyStr) {
-  return '04' + Buffer.from(base_decode(najPublicKeyStr.split(':')[1])).toString('hex');
+const rootPublicKey = 'secp256k1:4HFcTSodRLVCGNVcGc4Mf2fwBBBxv9jxkGdiW2S2CA1y6UpVVRWKj6RX7d7TDt65k2Bj3w9FU4BGtt43ZvuhCnNt';
+
+export function najPublicKeyStrToUncompressedHexPoint() {
+  const res = '04' + Buffer.from(base_decode(rootPublicKey.split(':')[1])).toString('hex');
+  return res;
 }
 
 async function sha256Hash(str) {
@@ -60,12 +63,12 @@ export function uncompressedHexPointToEvmAddress(uncompressedHexPoint) {
   const address = keccak('keccak256')
     .update(Buffer.from(uncompressedHexPoint.substring(2), 'hex'))
     .digest('hex');
-  
+
   // Ethereum address is last 20 bytes of hash (40 characters), prefixed with 0x
   return '0x' + address.substring(address.length - 40)
 }
 
-async function uncompressedHexPointToBtcAddress(publicKeyHex) {
+export async function uncompressedHexPointToBtcAddress(publicKeyHex, network) {
   // Step 1: SHA-256 hashing of the public key
   const publicKeyBytes = Uint8Array.from(Buffer.from(publicKeyHex, 'hex'));
 
@@ -81,7 +84,8 @@ async function uncompressedHexPointToBtcAddress(publicKeyHex) {
     .digest();
 
   // Step 3: Adding network byte (0x00 for Bitcoin Mainnet)
-  const networkByte = Buffer.from([0x00]);
+  const network_byte = network === 'bitcoin' ? 0x00 : 0x6f;
+  const networkByte = Buffer.from([network_byte]);
   const networkByteAndRipemd160 = Buffer.concat([
     networkByte,
     Buffer.from(ripemd160)
