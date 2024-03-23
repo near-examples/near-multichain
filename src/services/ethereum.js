@@ -56,7 +56,7 @@ export class Ethereum {
   async requestSignatureToMPC(wallet, contractId, path, ethPayload, transaction, sender) {
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
-    const request = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '30000000000000' });
+    const request = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
     const [big_r, big_s] = await wallet.getTransactionResult(request.transaction.hash);
 
     // reconstruct the signature

@@ -62,13 +62,13 @@ export class Bitcoin {
 
     psbt.addOutput({
       address: receiver,
-      value: satoshis,
+      value: Number(satoshis),
     });
 
     const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
     const fee = estimatedSize * (feeRate + 3);
 
-    const change = totalInput - satoshis - fee;
+    const change = totalInput - Number(satoshis) - fee;
     if (change > 0) {
       psbt.addOutput({
         address: sender,
@@ -86,7 +86,7 @@ export class Bitcoin {
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
     const sign = async (tx) => {
       const payload = Array.from(ethers.getBytes(tx)).reverse();
-      const signature = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '300000000000000' });
+      const signature = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
       const [big_r, big_s] = await wallet.getTransactionResult(signature.transaction.hash);
       return this.reconstructSignature(big_r, big_s);
     }
