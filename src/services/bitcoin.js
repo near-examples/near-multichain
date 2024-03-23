@@ -86,7 +86,7 @@ export class Bitcoin {
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
     const sign = async (tx) => {
       const payload = Array.from(ethers.getBytes(tx)).reverse();
-      const signature = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path }, gas: '300000000000000' });
+      const signature = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '300000000000000' });
       const [big_r, big_s] = await wallet.getTransactionResult(signature.transaction.hash);
       return this.reconstructSignature(big_r, big_s);
     }
