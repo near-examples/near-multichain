@@ -36,12 +36,15 @@ export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
     const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount);
 
     setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
-    const signedTransaction = await Eth.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, transaction, senderAddress);
-
-    setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
-
-    setSignedTransaction(signedTransaction);
-    setStep('relay');
+    try {
+      const signedTransaction = await Eth.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, transaction, senderAddress);
+      setSignedTransaction(signedTransaction);
+      setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
+      setStep('relay');
+    } catch(e) {
+      setStatus(`❌ Error: ${e.message}`);
+      setLoading(false);
+    }
   }
 
   async function relayTransaction() {
