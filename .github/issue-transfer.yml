@@ -11,7 +11,7 @@ jobs:
     - name: Transfer Issue
       uses: actions/github-script@v5
       with:
-        github-token: ${{secrets.GITHUB_TOKEN}}
+        github-token: ${{secrets.GH_TOKEN}}
         script: script: |
   const issueTitle = context.payload.issue.title;
   const issueBody = context.payload.issue.body;
