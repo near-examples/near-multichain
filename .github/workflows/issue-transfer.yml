@@ -1,4 +1,4 @@
-name: Transfer New, Issue to Docs Project
+name: Transfer New Issue to Docs Project
 
 on:
   issues:
