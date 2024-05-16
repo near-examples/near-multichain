@@ -7,8 +7,7 @@
 
 An example on signing and executing transactions across multiple blockchain protocols from one NEAR account
 
-> [!CAUTION]
-> This example runs on `testnet` networks by default, proceed with caution if you want to control accounts on any `mainnet`
+> Currently only available on **testnet**, and should be used to control only `testnet` accounts on other chains
 
 ---
 
