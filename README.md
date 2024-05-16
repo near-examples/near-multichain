@@ -5,7 +5,10 @@
 [![Chain Signatures Docs](https://img.shields.io/badge/Chain_Signatures_Docs-blue)](https://docs.near.org/concepts/abstraction/chain-signatures)
 [![Dev Support](https://img.shields.io/badge/DEV_SUPPORT-red)](https://t.me/neardev)
 
-Examples for signing and executing transactions across multiple blockchain protocols from one NEAR account. 
+An example on signing and executing transactions across multiple blockchain protocols from one NEAR account
+
+> [!CAUTION]
+> This example runs on `testnet` networks by default, proceed with caution if you want to control accounts on any `mainnet`
 
 ---
 
