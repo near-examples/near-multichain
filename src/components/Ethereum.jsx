@@ -62,7 +62,10 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
     try {
       const txHash = await Eth.relayTransaction(signedTransaction);
-      setStatus(`✅ Successful: https://sepolia.etherscan.io/tx/${txHash}`);
+      setStatus(<>
+        <a href={`https://sepolia.etherscan.io/tx/${txHash}`}> ✅ Successful </a>
+      </>
+      );
     } catch (e) {
       setStatus(`❌ Error: ${e.message}`);
     }

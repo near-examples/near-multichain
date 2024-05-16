@@ -49,7 +49,7 @@ function App() {
         }
 
         <div className="mt-3 small text-center">
-          <span> {status} </span>
+          {status}
         </div>
       </div>
     </NearContext.Provider>

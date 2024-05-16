@@ -47,13 +47,15 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
     const payload = await BTC.createPayload(senderAddress, receiver, amount);
 
     setStatus('🕒 Asking MPC to sign the transaction, this might take a while...');
-    const signedTransaction = await BTC.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, senderPK);
-    console.log(signedTransaction)
-
-    setStatus('✅ Signed payload ready to be relayed to the Bitcoin network');
-
-    setSignedTransaction(signedTransaction);
-    setStep('relay');
+    try{
+      const signedTransaction = await BTC.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, senderPK);
+      setStatus('✅ Signed payload ready to be relayed to the Bitcoin network');
+      setSignedTransaction(signedTransaction);
+      setStep('relay');
+    } catch (e) {
+      setStatus(`❌ Error: ${e.message}`);
+      setLoading(false);
+    }
   }
 
   async function relayTransaction() {
@@ -62,7 +64,11 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
 
     try {
       const txHash = await BTC.relayTransaction(signedTransaction);
-      setStatus(`✅ Successful: https://blockstream.info/testnet/tx/${txHash}`);
+      setStatus(
+        <>
+          <a href={`https://blockstream.info/testnet/tx/${txHash}`}> ✅ Successful </a>
+        </>
+      );
     } catch (e) {
       setStatus(`❌ Error: ${e.message}`);
     }
