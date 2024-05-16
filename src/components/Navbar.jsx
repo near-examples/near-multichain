@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { NearContext } from "../context";
 
-import logo from "../assets/logo-black.svg";
+import logo from "/logo-black.svg";
 
 const Navbar = () => {
   const { wallet, signedAccountId } = useContext(NearContext);
