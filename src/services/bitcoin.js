@@ -3,8 +3,6 @@ import * as ethers from 'ethers';
 import * as bitcoin from "bitcoinjs-lib";
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress } from '../services/kdf';
 
-const TGAS = 1000000000000;
-
 export class Bitcoin {
   constructor(chain_rpc, network) {
     this.chain_rpc = chain_rpc;
@@ -66,7 +64,7 @@ export class Bitcoin {
     });
 
     const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
-    const fee = estimatedSize * (feeRate + 3);
+    const fee = Math.ceil(estimatedSize * (feeRate + 3));
 
     const change = totalInput - Number(satoshis) - fee;
     if (change > 0) {

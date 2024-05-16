@@ -1,3 +1,5 @@
+import { NearContext } from './context';
+
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar"
 import { Wallet } from "./services/near-wallet";
@@ -11,29 +13,22 @@ const MPC_CONTRACT = 'multichain-testnet-2.testnet';
 const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
 
 function App() {
-  const [isSignedIn, setIsSignedIn] = useState(false);
+  const [signedAccountId, setSignedAccountId] = useState('');
   const [status, setStatus] = useState("Please login to request a signature");
   const [chain, setChain] = useState('eth');
 
-  useEffect(() => {
-    const initFunction = async () => {
-      const isSignedIn = await wallet.startUp();
-      setIsSignedIn(isSignedIn);
-    }
-
-    initFunction();
-  }, []);
+  useEffect(() => { wallet.startUp(setSignedAccountId) }, []);
 
   return (
-    <>
-      <Navbar wallet={wallet} isSignedIn={isSignedIn}></Navbar>
+    <NearContext.Provider value={{ wallet, signedAccountId }}>
+      <Navbar />
       <div className="container">
         <h4> 🔗 NEAR Multi Chain </h4>
         <p className="small">
           Safely control accounts on other chains through the NEAR MPC service. Learn more in the <a href="https://docs.near.org/abstraction/chain-signatures"> <b>documentation</b></a>.
         </p>
 
-        {isSignedIn &&
+        {signedAccountId &&
           <div style={{ width: '50%', minWidth: '400px' }}>
 
             <div className="input-group input-group-sm mt-3 mb-3">
@@ -48,8 +43,8 @@ function App() {
               </select>
             </div>
 
-            {chain === 'eth' && <EthereumView props={{ setStatus, wallet, MPC_CONTRACT }} />}
-            {chain === 'btc' && <BitcoinView props={{ setStatus, wallet, MPC_CONTRACT }} />}
+            {chain === 'eth' && <EthereumView props={{ setStatus, MPC_CONTRACT }} />}
+            {chain === 'btc' && <BitcoinView props={{ setStatus, MPC_CONTRACT }} />}
           </div>
         }
 
@@ -57,7 +52,7 @@ function App() {
           <span> {status} </span>
         </div>
       </div>
-    </>
+    </NearContext.Provider>
   )
 }
 
