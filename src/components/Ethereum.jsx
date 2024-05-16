@@ -1,12 +1,15 @@
+import { useState, useEffect, useContext } from "react";
+import { NearContext } from "../context";
+
 import { Ethereum } from "../services/ethereum";
-import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
-export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
+export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
+  const { wallet, signedAccountId } = useContext(NearContext);
 
   const [receiver, setReceiver] = useState("0xe0f3B7e68151E9306727104973752A415c2bcbEb");
   const [amount, setAmount] = useState(0.01);
@@ -15,21 +18,27 @@ export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("")
 
-  const [derivation, setDerivation] = useState("test");
+  const [derivation, setDerivation] = useState("ethereum-1");
   const derivationPath = useDebounce(derivation, 1000);
 
-  useEffect(() => { setEthAddress(derivationPath) }, [derivationPath]);
+  useEffect(() => {
+    setSenderAddress('Waiting for you to stop typing...')
+  }, [derivation]);
 
-  async function setEthAddress() {
-    setStatus('Querying your address and balance');
-    setSenderAddress('Deriving address...');
+  useEffect(() => {
+    setEthAddress()
 
-    const { address } = await Eth.deriveAddress(wallet.accountId, derivationPath);
-    const balance = await Eth.getBalance(address);
-  
-    setSenderAddress(address);
-    setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
-  }
+    async function setEthAddress() {
+      setStatus('Querying your address and balance');
+      setSenderAddress(`Deriving address from path ${derivationPath}...`);
+
+      const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
+      setSenderAddress(address);
+
+      const balance = await Eth.getBalance(address);
+      setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
+    }
+  }, [signedAccountId, derivationPath]);
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
@@ -41,7 +50,7 @@ export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
       setStep('relay');
-    } catch(e) {
+    } catch (e) {
       setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
     }
@@ -51,21 +60,18 @@ export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
     setLoading(true);
     setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
 
-    try{
+    try {
       const txHash = await Eth.relayTransaction(signedTransaction);
-      setStatus(`✅ Successful: https://sepolia.etherscan.io/tx/${txHash}`);
+      setStatus(<>
+        <a href={`https://sepolia.etherscan.io/tx/${txHash}`}> ✅ Successful </a>
+      </>
+      );
     } catch (e) {
       setStatus(`❌ Error: ${e.message}`);
     }
 
     setStep('request');
     setLoading(false);
-  }
-
-  const handleDerivationChange = (event) => {
-    setStatus('Derivation path changed');
-    setSenderAddress('Waiting for you to stop typing...');
-    setDerivation(event.target.value);
   }
 
   const UIChainSignature = async () => {
@@ -77,22 +83,22 @@ export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
   return (
     <>
       <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">From:</label>
+        <label className="col-sm-2 col-form-label col-form-label-sm">Path:</label>
         <div className="col-sm-10">
-          <input type="text" className="form-control form-control-sm" value={derivation} onChange={handleDerivationChange} disabled={loading}/>
+          <input type="text" className="form-control form-control-sm" value={derivation} onChange={(e) => setDerivation(e.target.value)} disabled={loading} />
           <div className="form-text" id="eth-sender"> {senderAddress} </div>
         </div>
       </div>
       <div className="row mb-3">
         <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
         <div className="col-sm-10">
-          <input type="text" className="form-control form-control-sm" value={receiver} onChange={(e) => setReceiver(e.target.value)} disabled={loading}/>
+          <input type="text" className="form-control form-control-sm" value={receiver} onChange={(e) => setReceiver(e.target.value)} disabled={loading} />
         </div>
       </div>
       <div className="row mb-3">
         <label className="col-sm-2 col-form-label col-form-label-sm">Amount:</label>
         <div className="col-sm-10">
-          <input type="number" className="form-control form-control-sm" value={amount} onChange={(e) => setAmount(e.target.value)} step="0.01" disabled={loading}/>
+          <input type="number" className="form-control form-control-sm" value={amount} onChange={(e) => setAmount(e.target.value)} step="0.01" disabled={loading} />
           <div className="form-text"> Ethereum units </div>
         </div>
       </div>
@@ -108,7 +114,6 @@ export function EthereumView({ props: { setStatus, wallet, MPC_CONTRACT } }) {
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    wallet: PropTypes.object.isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
   }).isRequired
 };
