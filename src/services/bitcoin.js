@@ -77,15 +77,13 @@ export class Bitcoin {
     return { psbt, utxos };
   }
 
-
   async requestSignatureToMPC(wallet, contractId, path, btcPayload, publicKey) {
     const { psbt, utxos } = btcPayload;
 
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
     const sign = async (tx) => {
       const payload = Array.from(ethers.getBytes(tx)).reverse();
-      const signature = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
-      const [big_r, big_s] = await wallet.getTransactionResult(signature.transaction.hash);
+      const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
       return this.reconstructSignature(big_r, big_s);
     }
 
