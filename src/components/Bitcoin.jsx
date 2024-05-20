@@ -47,7 +47,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
     const payload = await BTC.createPayload(senderAddress, receiver, amount);
 
     setStatus('🕒 Asking MPC to sign the transaction, this might take a while...');
-    try{
+    try {
       const signedTransaction = await BTC.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, senderPK);
       setStatus('✅ Signed payload ready to be relayed to the Bitcoin network');
       setSignedTransaction(signedTransaction);
@@ -66,7 +66,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
       const txHash = await BTC.relayTransaction(signedTransaction);
       setStatus(
         <>
-          <a href={`https://blockstream.info/testnet/tx/${txHash}`}> ✅ Successful </a>
+          <a href={`https://blockstream.info/testnet/tx/${txHash}`} target="_blank"> ✅ Successful </a>
         </>
       );
     } catch (e) {

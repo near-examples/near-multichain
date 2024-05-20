@@ -5,7 +5,7 @@ import keccak from 'keccak';
 import hash from 'hash.js';
 import bs58check from 'bs58check';
 
-const rootPublicKey = 'secp256k1:4HFcTSodRLVCGNVcGc4Mf2fwBBBxv9jxkGdiW2S2CA1y6UpVVRWKj6RX7d7TDt65k2Bj3w9FU4BGtt43ZvuhCnNt';
+const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
 
 export function najPublicKeyStrToUncompressedHexPoint() {
   const res = '04' + Buffer.from(base_decode(rootPublicKey.split(':')[1])).toString('hex');

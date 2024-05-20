@@ -7,7 +7,7 @@ import { EthereumView } from "./components/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
 
 // CONSTANTS
-const MPC_CONTRACT = 'multichain-testnet-2.testnet';
+const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
 
 // NEAR WALLET
 const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
