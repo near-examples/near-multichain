@@ -11,8 +11,8 @@ const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
-  const [receiver, setReceiver] = useState("0xe0f3B7e68151E9306727104973752A415c2bcbEb");
-  const [amount, setAmount] = useState(0.01);
+  const [receiver, setReceiver] = useState("0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD");
+  const [amount, setAmount] = useState(0.005);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
@@ -42,7 +42,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
-    const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount);
+    const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount, undefined);
 
     setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
     try {

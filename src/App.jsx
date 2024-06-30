@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar"
 import { Wallet } from "./services/near-wallet";
 import { EthereumView } from "./components/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
+import { EthereumContractView } from './components/EthereumContract';
 
 // CONSTANTS
 const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
@@ -38,12 +39,14 @@ function App() {
             <div className="input-group input-group-sm my-2 mb-4">
               <span className="text-primary input-group-text" id="chain">Chain</span>
               <select className="form-select" aria-describedby="chain" value={chain} onChange={e => setChain(e.target.value)} >
-                <option value="eth"> Ξ Ethereum </option>
+                <option value="eth"> Ξ Ethereum Transfer </option>
                 <option value="btc"> ₿ BTC </option>
+                <option value="eth_contract"> Ξ Ethereum Contract Call </option>
               </select>
             </div>
 
             {chain === 'eth' && <EthereumView props={{ setStatus, MPC_CONTRACT }} />}
+            {chain === 'eth_contract' && <EthereumContractView props={{ setStatus, MPC_CONTRACT }} />}
             {chain === 'btc' && <BitcoinView props={{ setStatus, MPC_CONTRACT }} />}
           </div>
         }
