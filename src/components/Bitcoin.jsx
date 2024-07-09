@@ -4,27 +4,35 @@ import { NearContext } from "../context";
 import { Bitcoin as Bitcoin } from "../services/bitcoin";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
+import {nearAccountFromEnv} from "../web3/utils.js";
 
 const BTC_NETWORK = 'testnet';
 const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
 
-export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+// const derivation = "bitcoin-1";
 
-  const [receiver, setReceiver] = useState("tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5");
-  const [amount, setAmount] = useState(1000);
+// 0. Make sure the user has signed in with their near wallet x
+// 1. Get the address from the user of the Ethereum address they want to send the money to
+// 2. Send the money from the faucet Near account to the user's address
+  // derive this
+  // have a statistics page for all the chains
+    // do we need to store the chains that we have for each
+
+export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } }) {
+  const { wallet, signedAccountId } = useContext(NearContext);
+  const [faucetAddress, setFaucetAddress] = useState("");
+  const [senderAddress, setSenderAddress] = useState("");
+
+  const [receiver, setReceiver] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
-  const [senderAddress, setSenderAddress] = useState("")
-  const [senderPK, setSenderPK] = useState("")
 
   const [derivation, setDerivation] = useState("bitcoin-1");
   const derivationPath = useDebounce(derivation, 500);
 
-  useEffect(() => {
-    setSenderAddress('Waiting for you to stop typing...')
-  }, [derivation]);
+  const [action, setAction] = useState("deposit");
+  const [depositAmount, setDepositAmount] = useState(0);
 
   useEffect(() => {
     setBtcAddress()
@@ -34,17 +42,31 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
       setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
       const { address, publicKey } = await BTC.deriveAddress(signedAccountId, derivationPath);
-      setSenderAddress(address);
-      setSenderPK(publicKey);
 
       const balance = await BTC.getBalance(address);
       setStatus(`Your Bitcoin address is: ${address}, balance: ${balance} satoshi`);
     }
   }, [signedAccountId, derivationPath]);
 
+  useEffect(() => {
+    setBTCAddress();
+    async function setBTCAddress() {
+      const {address, _} = await BTC.deriveAddress(nearAccount.accountId, derivationPath);
+      setFaucetAddress(address);
+    }
+  }, []);
+
+
+
+
+
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
-    const payload = await BTC.createPayload(senderAddress, receiver, amount);
+    const payload = {
+      action === "deposit" ?
+      await BTC.createPayload(senderAddress, receiver, amount) :
+        await BTC.createPayload(receiver, senderAddress, amount)
+    };
 
     setStatus('🕒 Asking MPC to sign the transaction, this might take a while...');
     try {
@@ -92,19 +114,21 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
           <div className="form-text" id="eth-sender"> {senderAddress} </div>
         </div>
       </div>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
-        <div className="col-sm-10">
-          <input type="text" className="form-control form-control-sm" value={receiver} onChange={(e) => setReceiver(e.target.value)} disabled={loading} />
-        </div>
+
+      <div className="input-group input-group-sm my-2 mb-4">
+        <span className="text-primary input-group-text" id="chain">Action:</span>
+        <select className="form-select" aria-describedby="chain" value={action} onChange={e => setAction(e.target.value)} >
+          <option value="deposit"> Deposit </option>
+          <option value="withdraw"> Withdraw </option>
+        </select>
       </div>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">Amount:</label>
-        <div className="col-sm-10">
-          <input type="number" className="form-control form-control-sm" value={amount} onChange={(e) => setAmount(e.target.value)} step="1" disabled={loading} />
-          <div className="form-text"> satoshi units </div>
+
+      {
+        action === "deposit" &&
+        <div className="input-group input-group-sm my-2 mb-4">
+          <input type="number" className="form-control form-control-sm" value={depositAmount} onChange={(e) => setDepositAmount(parseFloat(e.target.value))} />
         </div>
-      </div>
+      }
 
       <div className="text-center mt-3">
         {step === 'request' && <button className="btn btn-primary text-center" onClick={UIChainSignature} disabled={loading}> Request Signature </button>}
@@ -117,6 +141,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
 BitcoinView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
+    nearAccount: PropTypes.any.isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
   }).isRequired
 };

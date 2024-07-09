@@ -4,11 +4,12 @@ import { NearContext } from "../context";
 import { Ethereum } from "../services/ethereum";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
+import {Account} from "near-api-js";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
-export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
+export function EthereumView({ props: { setStatus, account, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [receiver, setReceiver] = useState("0xe0f3B7e68151E9306727104973752A415c2bcbEb");
@@ -114,6 +115,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
+    nearAccount: PropTypes.shape(Account).isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
   }).isRequired
 };
