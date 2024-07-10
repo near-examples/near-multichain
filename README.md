@@ -5,13 +5,12 @@
 [![Chain Signatures Docs](https://img.shields.io/badge/Chain_Signatures_Docs-blue)](https://docs.near.org/concepts/abstraction/chain-signatures)
 [![Dev Support](https://img.shields.io/badge/DEV_SUPPORT-red)](https://t.me/neardev)
 
-This repo contains multiple examples of sending transacitons to foreign chains from a NEAR account.
+This repo contains multiple examples of signing and executing transactions across multiple blockchain protocols from a NEAR account
 
 - [standard-multichain](./standard-multichain/): send transactions to foreign chains from a NEAR account.
-- [chain-keys](./chain-keys/): send transactions to Ethereum through NFT chain keys.
+- [chain-keys](./chain-keys/): send transactions to Ethereum through transferable NFT chain keys.
 
 > Currently only available on **testnet**, and should be used to control only `testnet` accounts on other chains
-
 
 > [!CAUTION]
 > Chain Signatures are currently in `alpha` and should only be used in a `testnet` environment.
