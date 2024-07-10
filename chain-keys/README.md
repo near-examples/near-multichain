@@ -1,11 +1,6 @@
-# NEAR Multichain Examples w/ Chain Signatures
+# nft-chain-keys
 
-![alpha badge](https://img.shields.io/badge/status-alpha-red)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-green)](https://github.com/near-examples/near-multichain/pulls)
-[![Chain Signatures Docs](https://img.shields.io/badge/Chain_Signatures_Docs-blue)](https://docs.near.org/concepts/abstraction/chain-signatures)
-[![Dev Support](https://img.shields.io/badge/DEV_SUPPORT-red)](https://t.me/neardev)
-
-An example on signing and executing transactions across multiple blockchain protocols from one NEAR account
+An example on signing and executing transactions for Ethereum from a NEAR account through NFT Chain Keys. This enables Ethereum accounts to be swapped via NFT standards on NEAR.
 
 > Currently only available on **testnet**, and should be used to control only `testnet` accounts on other chains
 
@@ -14,7 +9,7 @@ An example on signing and executing transactions across multiple blockchain prot
 ## Requirements
 
 - `npm` or `yarn`
-- NEAR `testnet` account using [MyNEARWallet](https://mynearwallet.com/)
+- NEAR `testnet` account using [MyNEARWallet](https://testnet.mynearwallet.com/) or [Meteor Wallet](https://wallet.meteorwallet.app/wallet)
 
 ## Installation
 
@@ -22,6 +17,10 @@ An example on signing and executing transactions across multiple blockchain prot
 npm install # or yarn
 npm run dev # or yarn dev
 ```
+
+---
+
+For a detailed explanation of how this example works, please refer to the [documentation](https://docs.near.org/build/chain-abstraction/nft-chain-keys).
 
 > [!CAUTION]
 > Chain Signatures are currently in `alpha` and should only be used in a `testnet` environment.
