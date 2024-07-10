@@ -1,6 +1,6 @@
 # nft-chain-keys
 
-An example on signing and executing transactions for Ethereum from a NEAR account through NFT Chain Keys. This enables Ethereum accounts to be swapped via NFT standards on NEAR.
+An example of signing and executing transactions for Ethereum from a NEAR account through NFT Chain Keys. This enables Ethereum accounts to be swapped via NFT standards on NEAR.
 
 > Currently only available on **testnet**, and should be used to control only `testnet` accounts on other chains
 

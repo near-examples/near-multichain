@@ -8,7 +8,7 @@
 This repo contains multiple examples of signing and executing transactions across multiple blockchain protocols from a NEAR account
 
 - [standard-multichain](./standard-multichain/): send transactions to foreign chains from a NEAR account.
-- [chain-keys](./chain-keys/): send transactions to Ethereum through transferable NFT chain keys.
+- [nft-chain-keys](./nft-chain-keys/): send transactions to Ethereum through transferable NFT Chain Keys.
 
 > Currently only available on **testnet**, and should be used to control only `testnet` accounts on other chains
 
