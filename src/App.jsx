@@ -3,7 +3,7 @@ import { NearContext } from './context';
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar"
 import { Wallet } from "./services/near-wallet";
-import { EthereumView } from "./components/Ethereum";
+import { EthereumView } from "./components/Ethereum/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
 
 // CONSTANTS

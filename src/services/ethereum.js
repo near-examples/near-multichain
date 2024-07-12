@@ -3,10 +3,12 @@ import { bytesToHex } from '@ethereumjs/util';
 import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress } from '../services/kdf';
 import { Common } from '@ethereumjs/common'
+import { Contract, JsonRpcProvider } from "ethers";
 
 export class Ethereum {
   constructor(chain_rpc, chain_id) {
     this.web3 = new Web3(chain_rpc);
+    this.provider = new JsonRpcProvider(chain_rpc);
     this.chain_id = chain_id;
     this.queryGasPrice();
   }
@@ -29,7 +31,19 @@ export class Ethereum {
     return Number(balance * 100n / ONE_ETH) / 100;
   }
 
-  async createPayload(sender, receiver, amount) {
+  async getContractViewFunction(receiver, abi, methodName, args = []) {
+    const contract = new Contract(receiver, abi, this.provider);
+
+    return await contract[methodName](...args);
+  }
+
+  createTransactionData(receiver, abi, methodName, args = []) {
+    const contract = new Contract(receiver, abi);
+
+    return contract.interface.encodeFunctionData(methodName, args);
+  }
+
+  async createPayload(sender, receiver, amount, data) {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce & gas price
@@ -39,10 +53,11 @@ export class Ethereum {
     // Construct transaction
     const transactionData = {
       nonce,
-      gasLimit: 21000,
+      gasLimit: 50_000,
       maxFeePerGas,
       maxPriorityFeePerGas,
       to: receiver,
+      data: data,
       value: BigInt(this.web3.utils.toWei(amount, "ether")),
       chain: this.chain_id,
     };

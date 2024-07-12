@@ -72,6 +72,8 @@ export class Bitcoin {
         address: sender,
         value: change,
       });
+    } else {
+      alert(`Not enough funds to cover the transaction and fee. Missing ${-change} satoshis`);
     }
 
     return { psbt, utxos };
