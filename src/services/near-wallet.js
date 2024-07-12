@@ -34,7 +34,7 @@ export class Wallet {
    */
   startUp = async (accountChangeHook) => {
     this.selector = setupWalletSelector({
-      network: this.networkId,
+      network: {networkId: this.networkId, nodeUrl: 'https://rpc.testnet.pagoda.co'},
       modules: [setupMyNearWallet(), setupHereWallet()]
     });
 

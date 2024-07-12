@@ -40,7 +40,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
       const balance = await BTC.getBalance(address);
       setStatus(`Your Bitcoin address is: ${address}, balance: ${balance} satoshi`);
     }
-  }, [signedAccountId, derivationPath]);
+  }, [signedAccountId, derivationPath, setStatus]);
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
