@@ -4,7 +4,9 @@ import { NearContext } from "../context";
 import { Bitcoin as Bitcoin } from "../services/bitcoin";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
-import {nearAccountFromEnv} from "../web3/utils.js";
+import {drop} from "../App.jsx";
+import {callContract} from "../services/near.js";
+import {deriveChildPublicKey} from "../services/kdf.js";
 
 const BTC_NETWORK = 'testnet';
 const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
@@ -23,7 +25,6 @@ export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } })
   const [faucetAddress, setFaucetAddress] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
 
-  const [receiver, setReceiver] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
@@ -56,21 +57,18 @@ export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } })
     }
   }, []);
 
+  // this function needs to make a request to the contract to just say whether or not is it okay to make a rust call
+  // for a deposit
+
+  // we need to sign the payload using the sign method
 
 
-
-
-  async function chainSignature() {
+  async function chainSignature(senderAddress, receiverAddress, amount) {
     setStatus('🏗️ Creating transaction');
-    const payload = {
-      action === "deposit" ?
-      await BTC.createPayload(senderAddress, receiver, amount) :
-        await BTC.createPayload(receiver, senderAddress, amount)
-    };
-
+    const payload = await BTC.createPayload(senderAddress, receiverAddress, amount);
     setStatus('🕒 Asking MPC to sign the transaction, this might take a while...');
     try {
-      const signedTransaction = await BTC.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, senderPK);
+      const signedTransaction = await BTC.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, senderAddress);
       setStatus('✅ Signed payload ready to be relayed to the Bitcoin network');
       setSignedTransaction(signedTransaction);
       setStep('relay');
@@ -78,6 +76,26 @@ export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } })
       setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
     }
+  }
+
+  async function deposit() {
+
+  }
+
+  async function withdraw(account) {
+    const allowed = await contractCall(nearAccount, MPC_CONTRACT);
+    if (!allowed) {
+      setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
+    }
+
+    const derivedBTCNEAR = BTC.deriveAddress(nearAccount, derivationPath);
+    await chainSignature(derivedBTCNEAR, account, drop);
+  }
+
+  // callContract
+
+  async function contractCall(nearAccount, MPC_CONTRACT) {
+    const res = await callContract(nearAccount, MPC_CONTRACT, "BITCOIN");
   }
 
   async function relayTransaction() {

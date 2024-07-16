@@ -3,6 +3,7 @@ import { bytesToHex } from '@ethereumjs/util';
 import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress } from '../services/kdf';
 import { Common } from '@ethereumjs/common'
+import BN from "bn.js";
 
 export class Ethereum {
   constructor(chain_rpc, chain_id) {
@@ -29,6 +30,7 @@ export class Ethereum {
     return Number(balance * 100n / ONE_ETH) / 100;
   }
 
+  // payload to actually send the transasction
   async createPayload(sender, receiver, amount) {
     const common = new Common({ chain: this.chain_id });
 
@@ -81,4 +83,5 @@ export class Ethereum {
     const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
     return relayed.transactionHash
   }
+
 }
