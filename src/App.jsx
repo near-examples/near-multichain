@@ -22,11 +22,6 @@ function App() {
 
   useEffect(() => { wallet.startUp(setSignedAccountId) }, []);
   nearAccountFromEnv().then(({near, account}) => {
-      account.functionCall().then(res => {
-          res.receipts_outcome.forEach((res) =>
-              res.outcome.status.SuccessValue
-          )
-      })
         return (
             <NearContext.Provider value={{ wallet, signedAccountId }}>
               <Navbar />

@@ -5,26 +5,29 @@ import { Ethereum } from "../services/ethereum";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
 import {Account} from "near-api-js";
+import {callContract} from "../services/near.js";
+import {drop} from "../App.jsx";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
-export function EthereumView({ props: { setStatus, account, MPC_CONTRACT } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+const TREASURY_DERIVATION_PATH = "ethereum-1";
+const DERIVATION_PATH = useDebounce(TREASURY_DERIVATION_PATH, 500);
 
-  const [receiver, setReceiver] = useState("0xe0f3B7e68151E9306727104973752A415c2bcbEb");
-  const [amount, setAmount] = useState(0.01);
+export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }) {
+  const { wallet, signedAccountId } = useContext(NearContext);
+  const [senderAddress, setSenderAddress] = useState("");
+  const [receiverAddress, setReceiverAddress] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
-  const [senderAddress, setSenderAddress] = useState("")
 
-  const [derivation, setDerivation] = useState("ethereum-1");
-  const derivationPath = useDebounce(derivation, 1000);
+  const [derivation, setDerivation] = useState("-1");
+  const derivationPath = useDebounce(derivation, 500);
 
-  useEffect(() => {
-    setSenderAddress('Waiting for you to stop typing...')
-  }, [derivation]);
+  const [action, setAction] = useState("deposit");
+  const [depositAmount, setDepositAmount] = useState(10);
 
   useEffect(() => {
     setEthAddress()
@@ -41,7 +44,22 @@ export function EthereumView({ props: { setStatus, account, MPC_CONTRACT } }) {
     }
   }, [signedAccountId, derivationPath]);
 
-  async function chainSignature() {
+  async function deposit() {
+    const derivedEthNEARTreasury = Eth.deriveAddress(wallet.address, DERIVATION_PATH);
+    await sendMoney(derivedEthNEARTreasury, senderAddress, depositAmount);
+  }
+
+  async function withdraw() {
+    const allowed = await callContract(nearAccount, MPC_CONTRACT, "BITCOIN");
+    if (!allowed) {
+      setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
+    }
+
+    const derivedEthNEAR = Eth.deriveAddress(nearAccount, DERIVATION_PATH);
+    await sendMoney(derivedEthNEAR, senderAddress, drop);
+  }
+
+  async function sendMoney() {
     setStatus('🏗️ Creating transaction');
     const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount);
 
@@ -75,40 +93,39 @@ export function EthereumView({ props: { setStatus, account, MPC_CONTRACT } }) {
     setLoading(false);
   }
 
-  const UIChainSignature = async () => {
-    setLoading(true);
-    await chainSignature();
-    setLoading(false);
-  }
-
   return (
-    <>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">Path:</label>
-        <div className="col-sm-10">
-          <input type="text" className="form-control form-control-sm" value={derivation} onChange={(e) => setDerivation(e.target.value)} disabled={loading} />
-          <div className="form-text" id="eth-sender"> {senderAddress} </div>
+      <>
+        <div className="input-group input-group-sm my-2 mb-4">
+          <span className="text-primary input-group-text" id="chain">Action:</span>
+          <select className="form-select" aria-describedby="chain" value={action} onChange={e => setAction(e.target.value)} >
+            <option value="deposit"> Deposit </option>
+            <option value="withdraw"> Withdraw </option>
+          </select>
         </div>
-      </div>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
-        <div className="col-sm-10">
-          <input type="text" className="form-control form-control-sm" value={receiver} onChange={(e) => setReceiver(e.target.value)} disabled={loading} />
-        </div>
-      </div>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">Amount:</label>
-        <div className="col-sm-10">
-          <input type="number" className="form-control form-control-sm" value={amount} onChange={(e) => setAmount(e.target.value)} step="0.01" disabled={loading} />
-          <div className="form-text"> Ethereum units </div>
-        </div>
-      </div>
 
-      <div className="text-center">
-        {step === 'request' && <button className="btn btn-primary text-center" onClick={UIChainSignature} disabled={loading}> Request Signature </button>}
-        {step === 'relay' && <button className="btn btn-success text-center" onClick={relayTransaction} disabled={loading}> Relay Transaction </button>}
-      </div>
-    </>
+        {
+          action === "deposit" ?
+              <div className="input-group input-group-sm my-2 mb-4">
+                <span>Amount: </span>
+                <input type="number" className="form-control form-control-sm" value={depositAmount}
+                       onChange={(e) => setDepositAmount(parseFloat(e.target.value))}/>
+                <span>Sender: </span>
+                <input type="text" className="form-control form-control-sm" value={senderAddress}
+                       onChange={(e) => setSenderAddress(e.target.value)}/>
+                <input type="button" value="Submit" onClick={() => deposit()}/>
+              </div> :
+              <div className="input-group input-group-sm my-2 mb-4">
+                <span>Receiver: </span>
+                <input type="text" className="form-control form-control-sm" value={receiverAddress}
+                       onChange={(e) => setReceiverAddress(e.target.value)}/>
+                <input type="button" value="Submit" onClick={() => withdraw()}/>
+              </div>
+        }
+
+        <div className="text-center mt-3">
+          {step === 'relay' && <button className="btn btn-success text-center" onClick={relayTransaction} disabled={loading}> Relay Transaction </button>}
+        </div>
+      </>
   )
 }
 
