@@ -12,7 +12,6 @@ const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
 const TREASURY_DERIVATION_PATH = "ethereum-1";
-const DERIVATION_PATH = useDebounce(TREASURY_DERIVATION_PATH, 500);
 
 export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
@@ -28,6 +27,8 @@ export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }
 
   const [action, setAction] = useState("deposit");
   const [depositAmount, setDepositAmount] = useState(10);
+
+  const DERIVATION_PATH = useDebounce(TREASURY_DERIVATION_PATH, 500);
 
   useEffect(() => {
     setEthAddress()

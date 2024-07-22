@@ -23,7 +23,6 @@ const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
     // do we need to store the chains that we have for each
 
 const TREASURY_DERIVATION_PATH = "bitcoin-1";
-const DERIVATION_PATH = useDebounce(TREASURY_DERIVATION_PATH, 500);
 
 export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
@@ -36,6 +35,8 @@ export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } })
 
   const [action, setAction] = useState("deposit");
   const [depositAmount, setDepositAmount] = useState(10);
+
+  const DERIVATION_PATH = useDebounce(TREASURY_DERIVATION_PATH, 500);
 
   useEffect(() => {
     setBtcAddress()

@@ -2,10 +2,11 @@ import { keyStores, KeyPair, connect, Account, Near } from "near-api-js";
 import { TESTNET_CONFIG } from "./config.js";
 
 export const nearAccountFromEnv = async () => {
-    const keyPair = KeyPair.fromString(process.env.REACT_APP_NEAR_ACCOUNT_PRIVATE_KEY);
+    const privateKey = import.meta.env.VITE_NEAR_ACCOUNT_PRIVATE_KEY;
+    const keyPair = KeyPair.fromString(privateKey);
     return nearAccountFromKeyPair({
         keyPair,
-        accountId: process.env.REACT_APP_NEAR_ACCOUNT_ID
+        accountId: import.meta.env.VITE_NEAR_ACCOUNT_ID
     });
 };
 
