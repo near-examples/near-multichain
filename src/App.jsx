@@ -8,10 +8,12 @@ import { BitcoinView } from "./components/Bitcoin";
 import {nearAccountFromEnv} from "./web3/utils.js";
 
 // CONSTANTS
-const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
+export const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
+export const FAUCET_CONTRACT = 'faucetofnear.testnet';
 
 // NEAR WALLET
 const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
+// const faucet_wallet = new Wallet({ network: 'testnet', createAccessKeyFor: FAUCET_CONTRACT });
 
 export const drop = 0.1;
 
@@ -53,8 +55,8 @@ function App() {
                     </select>
                   </div>
 
-                  {chain === 'eth' && <EthereumView props={{ setStatus, nearAccount: nearAccount, MPC_CONTRACT }} />}
-                  {chain === 'btc' && <BitcoinView props={{ setStatus, nearAccount: nearAccount, MPC_CONTRACT }} />}
+                  {chain === 'eth' && <EthereumView props={{ setStatus, nearAccount: nearAccount }} />}
+                  {chain === 'btc' && <BitcoinView props={{ setStatus, nearAccount: nearAccount }} />}
                 </div>
             }
 

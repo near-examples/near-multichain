@@ -6,14 +6,14 @@ import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
 import {Account} from "near-api-js";
 import {callContract} from "../services/near.js";
-import {drop} from "../App.jsx";
+import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App.jsx";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
 const TREASURY_DERIVATION_PATH = "ethereum-1";
 
-export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }) {
+export function EthereumView({ props: { setStatus, nearAccount} }) {
   const { wallet, signedAccountId } = useContext(NearContext);
   const [senderAddress, setSenderAddress] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
@@ -51,8 +51,8 @@ export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }
   }
 
   async function withdraw() {
-    const allowed = await callContract(nearAccount, MPC_CONTRACT, "BITCOIN");
-    if (!allowed) {
+    const allowed = await callContract(nearAccount, FAUCET_CONTRACT, "ETHEREUM");
+    if (!allowed || allowed) {
       setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
     }
 
@@ -60,9 +60,9 @@ export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }
     await sendMoney(derivedEthNEAR, senderAddress, drop);
   }
 
-  async function sendMoney() {
+  async function sendMoney(senderAddress, receiverAddress, amount) {
     setStatus('🏗️ Creating transaction');
-    const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount);
+    const { transaction, payload } = await Eth.createPayload(senderAddress, receiverAddress, amount);
 
     setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
     try {
@@ -133,7 +133,6 @@ export function EthereumView({ props: { setStatus, nearAccount, MPC_CONTRACT } }
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    nearAccount: PropTypes.shape(Account).isRequired,
-    MPC_CONTRACT: PropTypes.string.isRequired,
+    nearAccount: PropTypes.shape(Account),
   }).isRequired
 };

@@ -4,7 +4,7 @@ import { NearContext } from "../context";
 import { Bitcoin as Bitcoin } from "../services/bitcoin";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
-import {drop} from "../App.jsx";
+import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App.jsx";
 import {callContract} from "../services/near.js";
 import {deriveChildPublicKey} from "../services/kdf.js";
 import {Account} from "near-api-js";
@@ -24,7 +24,7 @@ const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
 
 const TREASURY_DERIVATION_PATH = "bitcoin-1";
 
-export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } }) {
+export function BitcoinView({ props: { setStatus, nearAccount } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
   const [senderAddress, setSenderAddress] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
@@ -59,7 +59,7 @@ export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } })
   }
 
   async function withdraw() {
-    const allowed = await callContract(nearAccount, MPC_CONTRACT, "BITCOIN");
+    const allowed = await callContract(nearAccount, FAUCET_CONTRACT, "BITCOIN");
     if (!allowed) {
       setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
     }
@@ -142,7 +142,6 @@ export function BitcoinView({ props: { setStatus, nearAccount, MPC_CONTRACT } })
 BitcoinView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    nearAccount: PropTypes.shape(Account).isRequired,
-    MPC_CONTRACT: PropTypes.string.isRequired,
+    nearAccount: PropTypes.shape(Account),
   }).isRequired
 };
