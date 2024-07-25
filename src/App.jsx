@@ -7,10 +7,10 @@ import { EthereumView } from "./components/Ethereum/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
 
 // CONSTANTS
-const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
+const MPC_CONTRACT = 'v1.multichain-mpc-dev.testnet';
 
 // NEAR WALLET
-const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
+const wallet = new Wallet({ network: 'testnet' });
 
 function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
