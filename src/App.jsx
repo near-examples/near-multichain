@@ -14,7 +14,6 @@ export const FAUCET_CONTRACT = 'faucetofnear.testnet';
 // NEAR WALLET
 const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
 // const faucet_wallet = new Wallet({ network: 'testnet', createAccessKeyFor: FAUCET_CONTRACT });
-
 export const drop = 0.1;
 
 function App() {
@@ -33,7 +32,6 @@ function App() {
     return (
         <NearContext.Provider value={{ wallet, signedAccountId }}>
           <Navbar />
-            <div> good bye </div>
           <div className="container">
             <h4> 🔗 NEAR Multi Chain </h4>
             <p className="small">
@@ -42,7 +40,6 @@ function App() {
 
             {
                 <div style={{ width: '50%', minWidth: '400px' }}>
-                    <div>Hello World!</div>
                   <div className="input-group input-group-sm mt-3 mb-3">
                     <input className="form-control text-center" type="text" value={`MPC Contract: ${MPC_CONTRACT}`} disabled />
                   </div>
@@ -68,4 +65,7 @@ function App() {
     )
 }
 
+async function addChain(wallet) {
+
+}
 export default App

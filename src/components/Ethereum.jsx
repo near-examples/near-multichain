@@ -26,7 +26,7 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
   const derivationPath = useDebounce(derivation, 500);
 
   const [action, setAction] = useState("deposit");
-  const [depositAmount, setDepositAmount] = useState(10);
+  const [depositAmount, setDepositAmount] = useState(0.03);
 
   const DERIVATION_PATH = useDebounce(TREASURY_DERIVATION_PATH, 500);
 
@@ -46,8 +46,9 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
   }, [signedAccountId, derivationPath]);
 
   async function deposit() {
-    const derivedEthNEARTreasury = Eth.deriveAddress(wallet.address, DERIVATION_PATH);
-    await sendMoney(derivedEthNEARTreasury, senderAddress, depositAmount);
+    console.log("wallet address", wallet.address);
+    const {derivedEthNEARTreasury, _} = await Eth.deriveAddress(wallet.address, DERIVATION_PATH);
+    await sendMoney(wallet, senderAddress, derivedEthNEARTreasury, depositAmount);
   }
 
   async function withdraw() {
@@ -57,10 +58,10 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
     }
 
     const derivedEthNEAR = Eth.deriveAddress(nearAccount, DERIVATION_PATH);
-    await sendMoney(derivedEthNEAR, senderAddress, drop);
+    await sendMoney(nearAccount.wallet, derivedEthNEAR, senderAddress, drop);
   }
 
-  async function sendMoney(senderAddress, receiverAddress, amount) {
+  async function sendMoney(wallet, senderAddress, receiverAddress, amount) {
     setStatus('🏗️ Creating transaction');
     const { transaction, payload } = await Eth.createPayload(senderAddress, receiverAddress, amount);
 
@@ -110,9 +111,6 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
                 <span>Amount: </span>
                 <input type="number" className="form-control form-control-sm" value={depositAmount}
                        onChange={(e) => setDepositAmount(parseFloat(e.target.value))}/>
-                <span>Sender: </span>
-                <input type="text" className="form-control form-control-sm" value={senderAddress}
-                       onChange={(e) => setSenderAddress(e.target.value)}/>
                 <input type="button" value="Submit" onClick={() => deposit()}/>
               </div> :
               <div className="input-group input-group-sm my-2 mb-4">

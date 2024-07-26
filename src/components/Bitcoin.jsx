@@ -54,7 +54,7 @@ export function BitcoinView({ props: { setStatus, nearAccount } }) {
   }, [signedAccountId, DERIVATION_PATH]);
 
   async function deposit() {
-    const derivedBTCNEARTreasury = BTC.deriveAddress(wallet.address, DERIVATION_PATH);
+    const {derivedBTCNEARTreasury, _} = await BTC.deriveAddress(wallet.address, DERIVATION_PATH);
     await sendMoney(derivedBTCNEARTreasury, senderAddress, depositAmount);
   }
 
