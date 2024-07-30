@@ -62,32 +62,43 @@ export class Ethereum {
       chain: this.chain_id,
     };
 
-    // Return the message hash
+    // Create a transaction
     const transaction = FeeMarketEIP1559Transaction.fromTxData(transactionData, { common });
     const payload = transaction.getHashedMessageToSign();
+
+    // Store in sessionStorage for later
+    sessionStorage.setItem('transaction', transaction.serialize());
+
     return { transaction, payload };
   }
 
-  async requestSignatureToMPC(wallet, contractId, path, ethPayload, transaction, sender) {
+  async requestSignatureToMPC(wallet, contractId, path, ethPayload) {
     // Ask the MPC to sign the payload
-    const payload = Array.from(ethPayload.reverse());
-    const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: '1' });
+    sessionStorage.setItem('derivation', path);
 
+    const payload = Array.from(ethPayload);
+    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: '1' });
+    return { big_r, s, recovery_id };
+  }
+
+  async reconstructSignature(big_r, S, recovery_id, transaction) {
     // reconstruct the signature
-    const r = Buffer.from(big_r.substring(2), 'hex');
-    const s = Buffer.from(big_s, 'hex');
+    const r = Buffer.from(big_r.affine_point.substring(2), 'hex');
+    const s = Buffer.from(S.scalar, 'hex');
+    const v = recovery_id;
 
-    const candidates = [0n, 1n].map((v) => transaction.addSignature(v, r, s));
-    const signature = candidates.find((c) => c.getSenderAddress().toString().toLowerCase() === sender.toLowerCase());
-
-    if (!signature) {
-      throw new Error("Signature is not valid");
-    }
+    const signature = transaction.addSignature(v, r, s);
 
     if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
     if (!signature.verifySignature()) throw new Error("Signature is not valid");
-
     return signature;
+  }
+
+  async reconstructSignatureFromLocalSession(big_r, s, recovery_id, sender) {
+    const serialized = Uint8Array.from(JSON.parse(`[${sessionStorage.getItem('transaction')}]`));
+    const transaction = FeeMarketEIP1559Transaction.fromSerializedTx(serialized);
+    console.log("transaction", transaction)
+    return this.reconstructSignature(big_r, s, recovery_id, transaction, sender);
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network

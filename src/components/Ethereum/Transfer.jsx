@@ -5,7 +5,7 @@ import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
 
 export const TransferForm = forwardRef(({ props: { Eth, senderAddress, loading } }, ref) => {
-  const [receiver, setReceiver] = useState("0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD");
+  const [receiver, setReceiver] = useState("0xe0f3B7e68151E9306727104973752A415c2bcbEb");
   const [amount, setAmount] = useState(0.005);
 
   useImperativeHandle(ref, () => ({
