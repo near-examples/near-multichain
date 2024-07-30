@@ -11,37 +11,60 @@ import { FunctionCallForm } from "./FunctionCall";
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
-export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
+export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("request");
+  const [step, setStep] = useState(transactions ? 'relay' : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
+
+  const [senderLabel, setSenderLabel] = useState("")
   const [senderAddress, setSenderAddress] = useState("")
   const [action, setAction] = useState("transfer")
-  const [derivation, setDerivation] = useState("ethereum-1");
-  const derivationPath = useDebounce(derivation, 1000);
+  const [derivation, setDerivation] = useState(sessionStorage.getItem('derivation') || "ethereum-1");
+  const derivationPath = useDebounce(derivation, 1200);
+
+  const [reloaded, setReloaded] = useState(transactions.length? true : false);
 
   const childRef = useRef();
 
   useEffect(() => {
-    setSenderAddress('Waiting for you to stop typing...')
+    // special case for web wallet that reload the whole page
+    if (reloaded && senderAddress) signTransaction()
+
+    async function signTransaction() {
+      const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
+      console.log({ big_r, s, recovery_id });
+      const signedTransaction = await Eth.reconstructSignatureFromLocalSession(big_r, s, recovery_id, senderAddress);
+      setSignedTransaction(signedTransaction);
+      setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
+      setStep('relay');
+
+      setReloaded(false);
+      removeUrlParams();
+    }
+
+  }, [senderAddress]);
+
+  useEffect(() => {
+    setSenderLabel('Waiting for you to stop typing...')
+    setStatus('Querying Ethereum address and Balance...');
+    setSenderAddress(null)
+    setStep('request');
   }, [derivation]);
 
   useEffect(() => {
     setEthAddress()
-
+    console.log(derivationPath)
     async function setEthAddress() {
-      setStatus('Querying your address and balance');
-      setSenderAddress(`Deriving address from path ${derivationPath}...`);
-
       const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
       setSenderAddress(address);
+      setSenderLabel(address);
 
       const balance = await Eth.getBalance(address);
-      setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
+      if (!reloaded) setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
     }
-  }, [signedAccountId, derivationPath, setStatus]);
+  }, [derivationPath]);
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
@@ -51,7 +74,9 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
     setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
     try {
-      const signedTransaction = await Eth.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, transaction, senderAddress);
+      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, transaction, senderAddress);
+      const signedTransaction = await Eth.reconstructSignature(big_r, s, recovery_id, transaction, senderAddress);
+
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
       setStep('relay');
@@ -61,12 +86,10 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     }
   }
 
-
-
   async function relayTransaction() {
     setLoading(true);
     setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
-  
+
     try {
       const txHash = await Eth.relayTransaction(signedTransaction);
       setStatus(
@@ -95,7 +118,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
         <label className="col-sm-2 col-form-label col-form-label-sm">Path:</label>
         <div className="col-sm-10">
           <input type="text" className="form-control form-control-sm" value={derivation} onChange={(e) => setDerivation(e.target.value)} disabled={loading} />
-          <div className="form-text" id="eth-sender"> {senderAddress} </div>
+          <div className="form-text" id="eth-sender"> {senderLabel} </div>
         </div>
       </div>
       <div className="input-group input-group-sm my-2 mb-4">
@@ -107,9 +130,9 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       </div>
 
       {
-        action === 'transfer' 
-        ? <TransferForm ref={childRef} props={{ Eth, senderAddress, loading }} />
-        : <FunctionCallForm ref={childRef} props={{ Eth, senderAddress, loading }} />
+        action === 'transfer'
+          ? <TransferForm ref={childRef} props={{ Eth, senderAddress, loading }} />
+          : <FunctionCallForm ref={childRef} props={{ Eth, senderAddress, loading }} />
       }
 
       <div className="text-center">
@@ -118,11 +141,18 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       </div>
     </>
   )
+
+  function removeUrlParams () {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('transactionHashes');
+    window.history.replaceState({}, document.title, url);
+  }
 }
 
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
+    transactions: PropTypes.arrayOf(PropTypes.string).isRequired
   }).isRequired
 };
