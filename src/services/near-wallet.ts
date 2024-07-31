@@ -5,14 +5,22 @@ import { providers } from 'near-api-js';
 import { distinctUntilChanged, map } from 'rxjs';
 import '@near-wallet-selector/modal-ui/styles.css';
 import { setupModal } from '@near-wallet-selector/modal-ui';
-import { setupWalletSelector } from '@near-wallet-selector/core';
+import {NetworkId, setupWalletSelector, WalletSelector} from '@near-wallet-selector/core';
 import { setupHereWallet } from '@near-wallet-selector/here-wallet';
 import { setupMyNearWallet } from '@near-wallet-selector/my-near-wallet';
+import {Network} from "ethers";
 
 const THIRTY_TGAS = '30000000000000';
 const NO_DEPOSIT = '0';
 
+interface viewResult {
+  result: string
+}
+
 export class Wallet {
+  networkId: NetworkId;
+  createAccessKeyFor: string;
+  selector: WalletSelector;
   /**
    * @constructor
    * @param {Object} options - the options for the wallet
@@ -24,7 +32,7 @@ export class Wallet {
    */
   constructor({ networkId = 'testnet', createAccessKeyFor = undefined }) {
     this.createAccessKeyFor = createAccessKeyFor;
-    this.networkId = networkId;
+    this.networkId = networkId as NetworkId;
   }
 
   /**
@@ -33,7 +41,7 @@ export class Wallet {
    * @returns {Promise<string>} - the accountId of the signed-in user 
    */
   startUp = async (accountChangeHook) => {
-    this.selector = setupWalletSelector({
+    this.selector = await setupWalletSelector({
       network: this.networkId,
       modules: [setupMyNearWallet(), setupHereWallet()]
     });
@@ -83,13 +91,14 @@ export class Wallet {
     const url = `https://rpc.${this.networkId}.near.org`;
     const provider = new providers.JsonRpcProvider({ url });
 
-    let res = await provider.query({
+    let res = await provider.query<viewResult>({
       request_type: 'call_function',
       account_id: contractId,
       method_name: method,
       args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
       finality: 'optimistic',
     });
+
     return JSON.parse(Buffer.from(res.result).toString());
   };
 

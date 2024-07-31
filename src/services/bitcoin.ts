@@ -1,10 +1,15 @@
 import axios from 'axios';
 import * as ethers from 'ethers';
 import * as bitcoin from "bitcoinjs-lib";
-import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress } from '../services/kdf';
+import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress } from './kdf';
+import {Network} from "bitcoinjs-lib";
+import {Chain} from "../components/Chain";
 
-export class Bitcoin {
-  constructor(chain_rpc, network) {
+export class Bitcoin implements Chain<any>{
+  chain_rpc: string
+  network: Network
+
+  constructor(chain_rpc: string, network: string) {
     this.chain_rpc = chain_rpc;
     this.network = network === 'testnet' ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   }

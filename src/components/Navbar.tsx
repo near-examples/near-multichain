@@ -1,10 +1,12 @@
 import { useContext } from "react";
-import { NearContext } from "../context";
+import { NearContext } from "../context.js";
 
 import logo from "/logo-black.svg";
+import {Wallet} from "../services/near-wallet";
 
 const Navbar = () => {
-  const { wallet, signedAccountId } = useContext(NearContext);
+  let wallet: Wallet, signedAccountId: string;
+  ({ wallet, signedAccountId } = useContext(NearContext));
 
   const signIn = () => { wallet.signIn() }
 

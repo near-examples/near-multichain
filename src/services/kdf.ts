@@ -22,7 +22,7 @@ async function sha256Hash(str) {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function sha256StringToScalarLittleEndian(hashString) {
+function sha256StringToScalarLittleEndian(hashString): BN {
   const littleEndianString = hashString.match(/../g).reverse().join('');
 
   const scalar = new BN(littleEndianString, 16);

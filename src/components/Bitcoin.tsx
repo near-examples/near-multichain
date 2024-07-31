@@ -1,13 +1,14 @@
-import { useState, useEffect, useContext } from "react";
+import React, {useState, useEffect, useContext, Dispatch} from "react";
 import { NearContext } from "../context";
 
 import { Bitcoin as Bitcoin } from "../services/bitcoin";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
-import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App.jsx";
-import {callContract} from "../services/near.js";
-import {deriveChildPublicKey} from "../services/kdf.js";
+import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App";
+import {callContract} from "../services/near";
+import {deriveChildPublicKey} from "../services/kdf";
 import {Account} from "near-api-js";
+import {Wallet} from "../services/near-wallet";
 
 const BTC_NETWORK = 'testnet';
 const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
@@ -23,9 +24,15 @@ const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
     // do we need to store the chains that we have for each
 
 const TREASURY_DERIVATION_PATH = "bitcoin-1";
+export interface ChainProps {
+  setStatus: Dispatch<string>
+  nearAccount: Account
+}
 
-export function BitcoinView({ props: { setStatus, nearAccount } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+export const BitcoinView: React.FC<ChainProps> = ({ setStatus, nearAccount }) => {
+  let wallet: Wallet, signedAccountId: string;
+  ({wallet, signedAccountId} = useContext(NearContext));
+
   const [senderAddress, setSenderAddress] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
 
@@ -54,7 +61,7 @@ export function BitcoinView({ props: { setStatus, nearAccount } }) {
   }, [signedAccountId, DERIVATION_PATH]);
 
   async function deposit() {
-    const {derivedBTCNEARTreasury, _} = await BTC.deriveAddress(wallet.address, DERIVATION_PATH);
+    const {derivedBTCNEARTreasury, _} = await BTC.deriveAddress(nearAccount.accountId, DERIVATION_PATH);
     await sendMoney(derivedBTCNEARTreasury, senderAddress, depositAmount);
   }
 
@@ -139,9 +146,9 @@ export function BitcoinView({ props: { setStatus, nearAccount } }) {
   )
 }
 
-BitcoinView.propTypes = {
-  props: PropTypes.shape({
-    setStatus: PropTypes.func.isRequired,
-    nearAccount: PropTypes.shape(Account),
-  }).isRequired
-};
+// BitcoinView.propTypes = {
+//   props: PropTypes.shape({
+//     setStatus: PropTypes.func.isRequired,
+//     nearAccount: PropTypes.shape(Account),
+//   }).isRequired
+// };

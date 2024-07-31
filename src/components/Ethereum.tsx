@@ -1,20 +1,22 @@
-import { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { NearContext } from "../context";
 
 import { Ethereum } from "../services/ethereum";
 import { useDebounce } from "../hooks/debounce";
-import PropTypes from 'prop-types';
-import {Account} from "near-api-js";
-import {callContract} from "../services/near.js";
-import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App.jsx";
+import {callContract} from "../services/near";
+import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App.tsx";
+import {ChainProps} from "./Bitcoin";
+import {Wallet} from "../services/near-wallet";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
 const TREASURY_DERIVATION_PATH = "ethereum-1";
 
-export function EthereumView({ props: { setStatus, nearAccount} }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+export const EthereumView: React.FC<ChainProps> = ({ setStatus, nearAccount}) => {
+  let wallet: Wallet, signedAccountId: string;
+  ({wallet, signedAccountId} = useContext(NearContext));
+
   const [senderAddress, setSenderAddress] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
 
@@ -46,8 +48,7 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
   }, [signedAccountId, derivationPath]);
 
   async function deposit() {
-    console.log("wallet address", wallet.address);
-    const {derivedEthNEARTreasury, _} = await Eth.deriveAddress(wallet.address, DERIVATION_PATH);
+    const {derivedEthNEARTreasury, _} = await Eth.deriveAddress(nearAccount.accountId, DERIVATION_PATH);
     await sendMoney(wallet, senderAddress, derivedEthNEARTreasury, depositAmount);
   }
 
@@ -57,11 +58,11 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
       setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
     }
 
-    const derivedEthNEAR = Eth.deriveAddress(nearAccount, DERIVATION_PATH);
-    await sendMoney(nearAccount.wallet, derivedEthNEAR, senderAddress, drop);
+    const {derivedEthNEAR, _} = Eth.deriveAddress(nearAccount, DERIVATION_PATH);
+    await sendMoney(wallet, derivedEthNEAR, senderAddress, drop);
   }
 
-  async function sendMoney(wallet, senderAddress, receiverAddress, amount) {
+  async function sendMoney(wallet: Wallet, senderAddress: string, receiverAddress: string, amount: number) {
     setStatus('🏗️ Creating transaction');
     const { transaction, payload } = await Eth.createPayload(senderAddress, receiverAddress, amount);
 
@@ -128,9 +129,7 @@ export function EthereumView({ props: { setStatus, nearAccount} }) {
   )
 }
 
-EthereumView.propTypes = {
-  props: PropTypes.shape({
-    setStatus: PropTypes.func.isRequired,
-    nearAccount: PropTypes.shape(Account),
-  }).isRequired
-};
+// deriveAddress
+// sendMoney
+// relayTransaction
+// createPayload

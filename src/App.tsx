@@ -5,14 +5,18 @@ import Navbar from "./components/Navbar"
 import { Wallet } from "./services/near-wallet";
 import { EthereumView } from "./components/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
-import {nearAccountFromEnv} from "./web3/utils.js";
+import {nearAccountFromEnv} from "./web3/utils";
+import {Account} from "near-api-js";
 
 // CONSTANTS
 export const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
 export const FAUCET_CONTRACT = 'faucetofnear.testnet';
 
 // NEAR WALLET
-const wallet = new Wallet({ network: 'testnet', createAccessKeyFor: MPC_CONTRACT });
+const wallet = new Wallet({
+    networkId: 'testnet',
+    createAccessKeyFor: MPC_CONTRACT,
+});
 // const faucet_wallet = new Wallet({ network: 'testnet', createAccessKeyFor: FAUCET_CONTRACT });
 export const drop = 0.1;
 
@@ -20,7 +24,7 @@ function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
   const [status, setStatus] = useState("Please login to request a signature");
   const [chain, setChain] = useState('eth');
-  const [nearAccount, setNearAccount] = useState(null);
+  const [nearAccount, setNearAccount] = useState<Account>(null);
 
   useEffect(() => {
       wallet.startUp(setSignedAccountId);
@@ -52,8 +56,8 @@ function App() {
                     </select>
                   </div>
 
-                  {chain === 'eth' && <EthereumView props={{ setStatus, nearAccount: nearAccount }} />}
-                  {chain === 'btc' && <BitcoinView props={{ setStatus, nearAccount: nearAccount }} />}
+                  {chain === 'eth' && <EthereumView nearAccount={nearAccount} setStatus={setStatus}/>}
+                  {chain === 'btc' && <BitcoinView nearAccount={nearAccount} setStatus={setStatus}/>}
                 </div>
             }
 
@@ -65,7 +69,4 @@ function App() {
     )
 }
 
-async function addChain(wallet) {
-
-}
 export default App

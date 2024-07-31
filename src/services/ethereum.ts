@@ -1,11 +1,16 @@
-import { Web3 } from "web3"
+import {SupportedProviders, Web3} from "web3"
 import { bytesToHex } from '@ethereumjs/util';
 import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress } from '../services/kdf';
 import { Common } from '@ethereumjs/common'
-import BN from "bn.js";
+import {Wallet} from "./near-wallet";
+import {a} from "vite/dist/node/types.d-aGj9QkWt";
+import {Chain} from "../components/Chain";
 
-export class Ethereum {
+export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
+  private web3: Web3
+  private chain_id: string;
+
   constructor(chain_rpc, chain_id) {
     this.web3 = new Web3(chain_rpc);
     this.chain_id = chain_id;
@@ -55,7 +60,7 @@ export class Ethereum {
     return { transaction, payload };
   }
 
-  async requestSignatureToMPC(wallet, contractId, path, ethPayload, transaction, sender) {
+  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, ethPayload: any, transaction, sender): Promise<any> {
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
     const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });

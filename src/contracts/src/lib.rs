@@ -59,6 +59,10 @@ impl Contract {
     }
 
     // TODO is it a good idea to return a bool instead of panicking?
+    fn main() {
+        println!("Hello world");
+    }
+
     pub fn request_tokens(&mut self, chain: &str) -> bool {
         let requestor = String::from(env::current_account_id().as_str());
         let current_time = env::block_timestamp();

@@ -18,7 +18,7 @@
     "@near-wallet-selector/modal-ui": "^8.9.5",
     "@near-wallet-selector/my-near-wallet": "^8.9.5",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.14.10",
+    "@types/node": "^20.14.12",
     "@vitejs/plugin-react": "^4.2.1",
     "axios": "^1.6.8",
     "bitcoinjs-lib": "^6.1.5",
@@ -33,6 +33,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "rxjs": "^7.8.1",
+    "viem": "^2.18.2",
     "vite-plugin-node-polyfills": "^0.21.0",
     "web3": "^4.6.0"
   },
@@ -40,13 +41,14 @@
     "near-api-js": "^3.0.4"
   },
   "devDependencies": {
+    "@types/elliptic": "^6.4.18",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "typescript": "^5.5.3",
+    "typescript": "^5.5.4",
     "vite": "^5.1.6"
   }
 }
