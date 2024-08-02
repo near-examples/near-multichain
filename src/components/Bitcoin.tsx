@@ -66,7 +66,7 @@ export const BitcoinView: React.FC<ChainProps> = ({ setStatus, nearAccount }) =>
   }
 
   async function withdraw() {
-    const allowed = await callContract(nearAccount, FAUCET_CONTRACT, "BITCOIN");
+    const allowed = await callContract(nearAccount, TREASURY_DERIVATION_PATH, FAUCET_CONTRACT, "BITCOIN");
     if (!allowed) {
       setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
     }
@@ -110,6 +110,22 @@ export const BitcoinView: React.FC<ChainProps> = ({ setStatus, nearAccount }) =>
     setLoading(false);
   }
 
+  async function addChain(chain: string) {
+    try {
+      await wallet.callMethod({
+        contractId: FAUCET_CONTRACT,
+        method: 'add_chain',
+        args: {
+          chain: chain
+        },
+        gas: '250000000000000',
+        deposit: 1,
+      })
+    } catch (e) {
+      setStatus(`❌ Error: ${e.message}`);
+    }
+  }
+
   return (
     <>
       <div className="input-group input-group-sm my-2 mb-4">
@@ -117,6 +133,7 @@ export const BitcoinView: React.FC<ChainProps> = ({ setStatus, nearAccount }) =>
         <select className="form-select" aria-describedby="chain" value={action} onChange={e => setAction(e.target.value)} >
           <option value="deposit"> Deposit </option>
           <option value="withdraw"> Withdraw </option>
+          <option value="addChain"> Add Chain </option>
         </select>
       </div>
 
@@ -131,12 +148,19 @@ export const BitcoinView: React.FC<ChainProps> = ({ setStatus, nearAccount }) =>
                    onChange={(e) => setSenderAddress(e.target.value)}/>
             <input type="button" value="Submit" onClick={() => deposit()}/>
           </div> :
+            action === "withdraw" ?
             <div className="input-group input-group-sm my-2 mb-4">
               <span>Receiver: </span>
               <input type="text" className="form-control form-control-sm" value={receiverAddress}
                      onChange={(e) => setReceiverAddress(e.target.value)}/>
               <input type="button" value="Submit" onClick={() => withdraw()}/>
-            </div>
+            </div> :
+                <div className="input-group input-group-sm my-2 mb-4">
+                  <span>Receiver: </span>
+                  <input type="text" className="form-control form-control-sm" value={receiverAddress}
+                         onChange={(e) => setReceiverAddress(e.target.value)}/>
+                  <input type="button" value="Submit" onClick={() => withdraw()}/>
+                </div>
       }
 
       <div className="text-center mt-3">

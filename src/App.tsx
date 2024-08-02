@@ -9,7 +9,7 @@ import {nearAccountFromEnv} from "./web3/utils";
 import {Account} from "near-api-js";
 
 // CONSTANTS
-export const MPC_CONTRACT = 'v2.multichain-mpc.testnet';
+export const MPC_CONTRACT = 'v1.signer-prod.testnet';
 export const FAUCET_CONTRACT = 'faucetofnear.testnet';
 
 // NEAR WALLET
@@ -25,12 +25,14 @@ function App() {
   const [status, setStatus] = useState("Please login to request a signature");
   const [chain, setChain] = useState('eth');
   const [nearAccount, setNearAccount] = useState<Account>(null);
+  const [paused, setPaused] = useState(false);
 
-  useEffect(() => {
+    useEffect(() => {
       wallet.startUp(setSignedAccountId);
       nearAccountFromEnv().then(({account}) => {
           setNearAccount(account);
       })
+      console.log("signed Account id", signedAccountId);
   }, []);
 
     return (
@@ -41,8 +43,14 @@ function App() {
             <p className="small">
               Safely control accounts on other chains through the NEAR MPC service. Learn more in the <a href="https://docs.near.org/abstraction/chain-signatures"> <b>documentation</b></a>.
             </p>
+              {
+                  (nearAccount !== null && nearAccount.accountId === signedAccountId) && <input type="button" id="pause" value={paused ? "unpause" : "pause"} onClick={function () {
+                      setPaused(!paused);
+                  }}></input>
+              }
 
             {
+                !paused ?
                 <div style={{ width: '50%', minWidth: '400px' }}>
                   <div className="input-group input-group-sm mt-3 mb-3">
                     <input className="form-control text-center" type="text" value={`MPC Contract: ${MPC_CONTRACT}`} disabled />
@@ -58,12 +66,15 @@ function App() {
 
                   {chain === 'eth' && <EthereumView nearAccount={nearAccount} setStatus={setStatus}/>}
                   {chain === 'btc' && <BitcoinView nearAccount={nearAccount} setStatus={setStatus}/>}
-                </div>
+                    <div className="mt-3 small text-center">
+                        {status}
+                    </div>
+                </div> :
+                    <div style={{ width: '50%', minWidth: '400px' }}>
+                        <span>Faucet paused by owner</span>
+                    </div>
             }
 
-            <div className="mt-3 small text-center">
-              {status}
-            </div>
           </div>
         </NearContext.Provider>
     )

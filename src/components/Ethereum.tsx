@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useContext } from "react";
-import { NearContext } from "../context";
+import React, {useContext, useEffect, useState} from "react";
+import {NearContext} from "../context";
 
-import { Ethereum } from "../services/ethereum";
-import { useDebounce } from "../hooks/debounce";
+import {Ethereum} from "../services/ethereum";
+import {useDebounce} from "../hooks/debounce";
 import {callContract} from "../services/near";
 import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App.tsx";
 import {ChainProps} from "./Bitcoin";
 import {Wallet} from "../services/near-wallet";
+import {string} from "prop-types";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
@@ -14,13 +15,14 @@ const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 const TREASURY_DERIVATION_PATH = "ethereum-1";
 
 export const EthereumView: React.FC<ChainProps> = ({ setStatus, nearAccount}) => {
-  let wallet: Wallet, signedAccountId: string;
-  ({wallet, signedAccountId} = useContext(NearContext));
+  // let wallet: Wallet, signedAccountId: string;
+  const {wallet, signedAccountId} = useContext(NearContext);
 
   const [senderAddress, setSenderAddress] = useState("");
   const [receiverAddress, setReceiverAddress] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [nearAddressDerived, setNearAddressDerived] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
 
@@ -40,6 +42,7 @@ export const EthereumView: React.FC<ChainProps> = ({ setStatus, nearAccount}) =>
       setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
       const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
+      console.log("signed account id", signedAccountId, "derivation path", derivationPath, "address", address);
       setSenderAddress(address);
 
       const balance = await Eth.getBalance(address);
@@ -48,12 +51,16 @@ export const EthereumView: React.FC<ChainProps> = ({ setStatus, nearAccount}) =>
   }, [signedAccountId, derivationPath]);
 
   async function deposit() {
-    const {derivedEthNEARTreasury, _} = await Eth.deriveAddress(nearAccount.accountId, DERIVATION_PATH);
-    await sendMoney(wallet, senderAddress, derivedEthNEARTreasury, depositAmount);
+    const {address, _} = await Eth.deriveAddress(nearAccount.accountId, DERIVATION_PATH);
+    console.log("Derived", address);
+    console.log("wallet", wallet, "sender address", senderAddress, "deposit", depositAmount);
+
+    await sendMoney(wallet, senderAddress, address, depositAmount);
+    console.log("doneee :)");
   }
 
   async function withdraw() {
-    const allowed = await callContract(nearAccount, FAUCET_CONTRACT, "ETHEREUM");
+    const allowed = await callContract(nearAccount, derivationPath, FAUCET_CONTRACT, "ETHEREUM");
     if (!allowed || allowed) {
       setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
     }
@@ -94,6 +101,27 @@ export const EthereumView: React.FC<ChainProps> = ({ setStatus, nearAccount}) =>
 
     setStep('request');
     setLoading(false);
+  }
+
+  async function addChain(chain: string) {
+    try {
+      await wallet.callMethod({
+        contractId: FAUCET_CONTRACT,
+        method: 'add_chain',
+        args: {
+          chain: chain
+        },
+        gas: '250000000000000',
+        deposit: 1,
+      })
+    } catch (e) {
+      setStatus(`❌ Error: ${e.message}`);
+    }
+  }
+
+  async function getBalance(): Promise<number> {
+    const address = await Eth.deriveAddress(nearAccount.accountId, derivationPath);
+    return await Eth.getBalance(address);
   }
 
   return (

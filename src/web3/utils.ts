@@ -3,11 +3,11 @@ import { TESTNET_CONFIG } from "./config";
 
 // env utils
 export const nearAccountFromEnv = async (): Promise<{ account: Account, near: Near }> => {
-    const keyPair = KeyPair.fromString(process.env.NEAR_ACCOUNT_PRIVATE_KEY!);
+    const keyPair = KeyPair.fromString(import.meta.env.VITE_NEAR_ACCOUNT_PRIVATE_KEY!);
     return nearAccountFromKeyPair({
         keyPair,
-        accountId: process.env.NEAR_ACCOUNT_ID!
-});
+        accountId: import.meta.env.VITE_NEAR_ACCOUNT_ID!
+    });
 };
 
 export const nearAccountFromKeyPair = async (config: {

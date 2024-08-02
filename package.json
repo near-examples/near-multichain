@@ -24,6 +24,7 @@
     "bitcoinjs-lib": "^6.1.5",
     "bn.js": "^5.2.1",
     "bs58check": "^3.0.1",
+    "dotenv": "^16.4.5",
     "elliptic": "^6.5.5",
     "ethers": "^6.11.1",
     "hash.js": "^1.1.7",

@@ -63,11 +63,24 @@ export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
   async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, ethPayload: any, transaction, sender): Promise<any> {
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
-    const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
+    const x = await wallet.callMethod({
+      contractId,
+      method: 'sign',
+      args: {
+        request: {
+          payload,
+          path,
+          key_version: 0
+        }
+      },
+      gas: '250000000000000',
+      deposit: 1,
+    });
+    // const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
 
     // reconstruct the signature
-    const r = Buffer.from(big_r.substring(2), 'hex');
-    const s = Buffer.from(big_s, 'hex');
+    const r = Buffer.from(x[0].substring(2), 'hex');
+    const s = Buffer.from(x[1], 'hex');
 
     const candidates = [0n, 1n].map((v) => transaction.addSignature(v, r, s));
     const signature = candidates.find((c) => c.getSenderAddress().toString().toLowerCase() === sender.toLowerCase());

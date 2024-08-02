@@ -16,15 +16,7 @@ trait MPC {
 pub struct Contract {
     requests: LookupMap<String, LookupMap<String, u64>>,
     supported_chains: LookupSet<String>,
-}
-
-impl Default for Contract {
-    fn default() -> Self {
-        Self {
-            requests: LookupMap::new(b"chains".to_vec()), // TODO only do this once
-            supported_chains: LookupSet::new(b"supported_chains".to_vec()),
-        }
-    }
+    limit: u64,
 }
 
 #[near]
@@ -38,8 +30,9 @@ impl Contract {
         }
 
         Self {
-            requests: LookupMap::new(b"CHAINS".to_vec()),
+            requests: LookupMap::new(b"chains".to_vec()),
             supported_chains,
+            limit: ONE_DAY,
         }
     }
 
@@ -58,9 +51,13 @@ impl Contract {
         }
     }
 
-    // TODO is it a good idea to return a bool instead of panicking?
-    fn main() {
-        println!("Hello world");
+    pub fn update_limit(&mut self, limit: u64) {
+        let owner = env::predecessor_account_id() == env::current_account_id();
+        if !owner {
+            panic!("Only the owner can add a new limit");
+        }
+
+        self.limit = limit;
     }
 
     pub fn request_tokens(&mut self, chain: &str) -> bool {
@@ -83,7 +80,7 @@ impl Contract {
                         return true;
                     }
                     Some(&last_request) => {
-                        if current_time < last_request + ONE_DAY {
+                        if current_time < last_request + self.limit {
                             return false;
                         } else {
                             requests.insert(chain_str, current_time);
