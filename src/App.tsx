@@ -7,6 +7,9 @@ import { EthereumView } from "./components/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
 import {nearAccountFromEnv} from "./web3/utils";
 import {Account} from "near-api-js";
+import {FinalExecutionOutcome} from "@near-wallet-selector/core";
+import BN from "bn.js";
+import ExecutionStatus from "@near-js/types"
 
 // CONSTANTS
 export const MPC_CONTRACT = 'v1.signer-prod.testnet';
@@ -27,13 +30,27 @@ function App() {
   const [nearAccount, setNearAccount] = useState<Account>(null);
   const [paused, setPaused] = useState(false);
 
-    useEffect(() => {
-      wallet.startUp(setSignedAccountId);
-      nearAccountFromEnv().then(({account}) => {
-          setNearAccount(account);
-      })
-      console.log("signed Account id", signedAccountId);
+  useEffect(() => {
+    wallet.startUp(setSignedAccountId);
+    nearAccountFromEnv().then(async ({account}) => {
+      setNearAccount(account);
+      pause(account);
+    })
+
+      async function pause(account: Account) {
+          const res: FinalExecutionOutcome = await account.functionCall({
+              contractId: FAUCET_CONTRACT,
+              methodName: "paused",
+              gas: new BN('250000000000000'),
+              attachedDeposit: new BN("1"),
+          })
+          const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status
+          const successValue = Buffer.from(status, 'base64').toString('utf-8');
+          setPaused(successValue === "true");
+      }
+    console.log("signed Account id", signedAccountId);
   }, []);
+
 
     return (
         <NearContext.Provider value={{ wallet, signedAccountId }}>
