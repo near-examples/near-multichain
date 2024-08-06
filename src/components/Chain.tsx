@@ -5,23 +5,29 @@ import {useDebounce} from "../hooks/debounce";
 import {callContract} from "../services/near";
 import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App";
 import {Account} from "near-api-js";
+import {Payload} from "@near-wallet-selector/core/src/lib/helpers";
 
 export interface Address {
     publicKey: Buffer,
     address: string
 
 }
-export interface Chain<TransactionType> {
+export interface Chain<PayloadType, TransactionType> {
     deriveAddress(accountId, derivation_path): Promise<Address>
-    createPayload(sender: string, receiver: string, amount: number): Promise<TransactionType>
-    requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, ethPayload: any, transaction: TransactionType, sender: string): Promise<TransactionType>
-    relayTransaction(tx: TransactionType, successCb: (txHash: string, setState: Dispatch<string>) => void)
+    createPayload(sender: string, receiver: string, amount: number): Promise<PayloadAndTx<PayloadType, TransactionType>>
+    requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, payloadAndTx: PayloadAndTx<PayloadType, TransactionType>, sender: string): Promise<TransactionType>
+    relayTransaction(tx: TransactionType, setStatus: Dispatch<string>, successCb: (txHash: string, setStatus: Dispatch<string>) => void)
     getBalance(accountId: string): Promise<Number>
 }
 
 export interface ChainProps {
     setStatus: Dispatch<string>
     nearAccount: Account
+}
+
+export interface PayloadAndTx<PayloadType, TransactionType> {
+    payload: PayloadType,
+    tx: TransactionType
 }
 
 export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: string, successCb: (txHash: string, setState: Dispatch<string>) => void) => {
@@ -99,7 +105,7 @@ export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: stri
             setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
 
             try {
-                await c.relayTransaction(signedTransaction, successCb);
+                await c.relayTransaction(signedTransaction, setStatus, successCb);
             } catch (e) {
                 setStatus(`❌ Error: ${e.message}`);
             }

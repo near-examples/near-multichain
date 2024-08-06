@@ -1,11 +1,18 @@
 import axios from 'axios';
 import * as ethers from 'ethers';
 import * as bitcoin from "bitcoinjs-lib";
-import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress } from './kdf';
-import {Network} from "bitcoinjs-lib";
-import {Chain} from "../components/Chain";
+import {Network, Psbt, Transaction} from "bitcoinjs-lib";
+import {deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress} from './kdf';
+import {Address, Chain, PayloadAndTx} from "../components/Chain";
+import {Dispatch} from "react";
+import {Wallet} from "./near-wallet";
 
-export class Bitcoin implements Chain<any>{
+export interface BTCPayload {
+  utxos: any[],
+  psbt: Psbt
+}
+
+export class Bitcoin implements Chain<BTCPayload, Transaction>{
   chain_rpc: string
   network: Network
 
@@ -14,21 +21,20 @@ export class Bitcoin implements Chain<any>{
     this.network = network === 'testnet' ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
   }
 
-  async deriveAddress(accountId, derivation_path) {
+  async deriveAddress(accountId, derivation_path): Promise<Address> {
     const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
     const address = await uncompressedHexPointToBtcAddress(publicKey, this.network);
     return { publicKey: Buffer.from(publicKey, 'hex'), address };
   }
 
-  async getBalance(address) {
+  async getBalance(address): Promise<number> {
     const response = await axios.get(
       `${this.chain_rpc}/address/${address}/utxo`
     );
-    const balance = response.data.reduce((acc, utxo) => acc + utxo.value, 0);
-    return balance;
+    return response.data.reduce((acc, utxo) => acc + utxo.value, 0);
   }
 
-  async createPayload(sender, receiver, satoshis) {
+  async createPayload(sender, receiver, satoshis): Promise<PayloadAndTx<BTCPayload, Transaction>> {
     const utxos = await this.fetchUTXOs(sender);
     const feeRate = await this.fetchFeeRate();
 
@@ -79,10 +85,16 @@ export class Bitcoin implements Chain<any>{
       });
     }
 
-    return { psbt, utxos };
+    return {
+      payload: {
+        utxos: utxos,
+        psbt: psbt,
+      },
+      tx: psbt.extractTransaction()
+    };
   }
 
-  async requestSignatureToMPC(wallet, contractId, path, btcPayload, publicKey) {
+  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {btcPayload, tx}: PayloadAndTx<BTCPayload, Transaction>, publicKey: string): Promise<Transaction> {
     const { psbt, utxos } = btcPayload;
 
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
@@ -94,7 +106,8 @@ export class Bitcoin implements Chain<any>{
 
     await Promise.all(
       utxos.map(async (_, index) => {
-        await psbt.signInputAsync(index, { publicKey, sign });
+        const publicKeyBuffer: Buffer = Buffer.from(publicKey);
+        await psbt.signInputAsync(index, {publicKey: publicKeyBuffer, sign});
       })
     );
 
@@ -117,13 +130,17 @@ export class Bitcoin implements Chain<any>{
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
-  async relayTransaction(signedTransaction, useProxy = true) {
+  async relayTransaction(signedTransaction: Transaction, setState: Dispatch<string>, successCb: (txHash: string, setState: Dispatch<string>) => void, useProxy = true): Promise<Transaction> {
     const proxy = useProxy ? "https://corsproxy.io/?" : "";
 
     const response = await axios.post(
       `${proxy}${this.chain_rpc}/tx`,
       signedTransaction
     );
+
+    const txHash = response.data;
+    successCb(txHash, setState);
+
     return response.data
   }
 

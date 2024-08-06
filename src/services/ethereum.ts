@@ -1,13 +1,19 @@
-import {SupportedProviders, Web3} from "web3"
-import { bytesToHex } from '@ethereumjs/util';
-import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
-import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress } from '../services/kdf';
-import { Common } from '@ethereumjs/common'
+import {Web3} from "web3"
+import {bytesToHex} from '@ethereumjs/util';
+import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
+import {
+  deriveChildPublicKey,
+  najPublicKeyStrToUncompressedHexPoint,
+  uncompressedHexPointToEvmAddress
+} from '../services/kdf';
+import {Common} from '@ethereumjs/common'
 import {Wallet} from "./near-wallet";
-import {a} from "vite/dist/node/types.d-aGj9QkWt";
-import {Chain} from "../components/Chain";
+import {Address, Chain, PayloadAndTx} from "../components/Chain";
+import {Transaction} from "bitcoinjs-lib";
+import {Dispatch} from "react";
 
-export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
+
+export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction>{
   private web3: Web3
   private chain_id: string;
 
@@ -17,9 +23,9 @@ export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
     this.queryGasPrice();
   }
 
-  async deriveAddress(accountId, derivation_path) {
+  async deriveAddress(accountId, derivation_path): Promise<Address> {
     const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
-    const address = await uncompressedHexPointToEvmAddress(publicKey);
+    const address = uncompressedHexPointToEvmAddress(publicKey);
     return { publicKey: Buffer.from(publicKey, 'hex'), address };
   }
 
@@ -36,7 +42,7 @@ export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
   }
 
   // payload to actually send the transasction
-  async createPayload(sender, receiver, amount) {
+  async createPayload(sender, receiver, amount): Promise<PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>> {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce & gas price
@@ -54,13 +60,15 @@ export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
       chain: this.chain_id,
     };
 
+    const tx = FeeMarketEIP1559Transaction.fromTxData(transactionData, {common});
     // Return the message hash
-    const transaction = FeeMarketEIP1559Transaction.fromTxData(transactionData, { common });
-    const payload = transaction.getHashedMessageToSign();
-    return { transaction, payload };
+    return {
+      payload: Buffer.from(tx.getHashedMessageToSign()),
+      tx: tx,
+    };
   }
 
-  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, ethPayload: any, transaction, sender): Promise<any> {
+  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {ethPayload, transaction}: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<FeeMarketEIP1559Transaction> {
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
     const x = await wallet.callMethod({
@@ -96,10 +104,12 @@ export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
-  async relayTransaction(signedTransaction) {
+  async relayTransaction(signedTransaction: FeeMarketEIP1559Transaction, setStatus: Dispatch<string>, successCb: (txHash: string, setState: Dispatch<string>) => void) {
     const serializedTx = bytesToHex(signedTransaction.serialize());
     const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
-    return relayed.transactionHash
+    const txHash = relayed.transactionHash;
+
+    successCb(txHash, setStatus);
   }
 
 }
