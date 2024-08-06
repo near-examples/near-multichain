@@ -34,19 +34,24 @@ function App() {
     wallet.startUp(setSignedAccountId);
     nearAccountFromEnv().then(async ({account}) => {
       setNearAccount(account);
-      pause(account);
+      setPause(account);
     })
 
-      async function pause(account: Account) {
-          const res: FinalExecutionOutcome = await account.functionCall({
-              contractId: FAUCET_CONTRACT,
-              methodName: "paused",
-              gas: new BN('250000000000000'),
-              attachedDeposit: new BN("1"),
-          })
-          const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status
-          const successValue = Buffer.from(status, 'base64').toString('utf-8');
-          setPaused(successValue === "true");
+      async function setPause(account: Account) {
+        try {
+            const res: FinalExecutionOutcome = await account.functionCall({
+                contractId: FAUCET_CONTRACT,
+                methodName: "paused",
+                gas: new BN('250000000000000'),
+                attachedDeposit: new BN("1"),
+            })
+            const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status
+            const successValue = Buffer.from(status, 'base64').toString('utf-8');
+            setPaused(successValue === "true");
+        } catch (e) {
+            setPaused(true);
+            setStatus(e)
+        }
       }
     console.log("signed Account id", signedAccountId);
   }, []);
