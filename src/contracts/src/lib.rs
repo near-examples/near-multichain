@@ -17,6 +17,7 @@ pub struct Contract {
     requests: LookupMap<String, LookupMap<String, u64>>,
     supported_chains: LookupSet<String>,
     limit: u64,
+    paused: bool,
 }
 
 #[near]
@@ -33,6 +34,7 @@ impl Contract {
             requests: LookupMap::new(b"chains".to_vec()),
             supported_chains,
             limit: ONE_DAY,
+            paused: false,
         }
     }
 
@@ -61,6 +63,10 @@ impl Contract {
     }
 
     pub fn request_tokens(&mut self, chain: &str) -> bool {
+        if self.paused {
+            panic!("Faucet is currently paused by the owner");
+        }
+
         let requestor = String::from(env::current_account_id().as_str());
         let current_time = env::block_timestamp();
 
@@ -90,6 +96,20 @@ impl Contract {
                 }
             }
         }
+    }
+
+    pub fn paused(&mut self) -> bool {
+        return self.paused;
+    }
+
+    pub fn set_paused(&mut self, pause: bool) -> bool {
+        let owner = env::predecessor_account_id() == env::current_account_id();
+        if !owner {
+            panic!("Only the owner can pause the faucet");
+        }
+
+        self.paused = pause;
+        return self.paused;
     }
 }
 
