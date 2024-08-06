@@ -29,7 +29,7 @@ export class Ethereum implements Chain<FeeMarketEIP1559Transaction>{
     return { maxFeePerGas, maxPriorityFeePerGas };
   }
 
-  async getBalance(accountId) {
+  async getBalance(accountId: string) {
     const balance = await this.web3.eth.getBalance(accountId)
     const ONE_ETH = 1000000000000000000n;
     return Number(balance * 100n / ONE_ETH) / 100;
