@@ -20,24 +20,28 @@ pub struct Contract {
     paused: bool,
 }
 
-#[near]
-impl Contract {
-    #[init]
-    #[private] // only callable by the contract's account
-    pub fn init() -> Self {
-        let mut supported_chains = LookupSet::new(b"supported_chains".to_vec());
-        for chain in CHAINS {
-            supported_chains.insert(String::from(chain));
-        }
-
+impl Default for Contract {
+    fn default() -> Self {
         Self {
             requests: LookupMap::new(b"chains".to_vec()),
-            supported_chains,
+            supported_chains: supported_chains_map(),
             limit: ONE_DAY,
             paused: false,
         }
     }
+}
 
+fn supported_chains_map() -> LookupSet<String> {
+    let mut supported_chains = LookupSet::new(b"supported_chains".to_vec());
+    for chain in CHAINS {
+        supported_chains.insert(String::from(chain));
+    }
+
+    return supported_chains;
+}
+
+#[near]
+impl Contract {
     pub fn add_chain(&mut self, chain: &str) {
         let owner = env::predecessor_account_id() == env::current_account_id();
         if !owner {

@@ -5,24 +5,41 @@ import {useDebounce} from "../hooks/debounce";
 import {callContract} from "../services/near";
 import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App";
 import {Account} from "near-api-js";
-import {Payload} from "@near-wallet-selector/core/src/lib/helpers";
+import {a} from "vite/dist/node/types.d-aGj9QkWt";
+import {FeeMarketEIP1559Transaction} from "@ethereumjs/tx";
+import * as nearAPI from "near-api-js";
+import {BrowserLocalStorageKeyStore} from "near-api-js/lib/key_stores";
 
 export interface Address {
     publicKey: Buffer,
     address: string
-
 }
-export interface Chain<PayloadType, TransactionType> {
+
+export interface Chain<PayloadType, TransactionType, WalletArgsType> {
     deriveAddress(accountId, derivation_path): Promise<Address>
     createPayload(sender: string, receiver: string, amount: number): Promise<PayloadAndTx<PayloadType, TransactionType>>
     requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, payloadAndTx: PayloadAndTx<PayloadType, TransactionType>, sender: string): Promise<TransactionType>
+    reconstructSignature(walletArgs: WalletArgsType, tx: TransactionType): Promise<string>
     relayTransaction(tx: TransactionType, setStatus: Dispatch<string>, successCb: (txHash: string, setStatus: Dispatch<string>) => void)
     getBalance(accountId: string): Promise<Number>
+}
+
+// TODO make this for Ethereum only
+export interface EthereumWalletResult {
+    big_r: any,
+    s: any,
+    recovery_id: any
+}
+
+export interface BitcoinWalletResult {
+    big_r: any
+    big_s: any
 }
 
 export interface ChainProps {
     setStatus: Dispatch<string>
     nearAccount: Account
+    walletArgs: any
 }
 
 export interface PayloadAndTx<PayloadType, TransactionType> {
@@ -30,8 +47,8 @@ export interface PayloadAndTx<PayloadType, TransactionType> {
     tx: TransactionType
 }
 
-export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: string, successCb: (txHash: string, setState: Dispatch<string>) => void) => {
-    return ({setStatus, nearAccount} : ChainProps) => {
+export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivationPath: string, successCb: (txHash: string, setState: Dispatch<string>) => void) => {
+    return ({setStatus, nearAccount, walletArgs} : ChainProps) => {
         const {wallet, signedAccountId} = useContext(NearContext);
 
         const [senderAddress, setSenderAddress] = useState("");
@@ -46,10 +63,26 @@ export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: stri
         const DERIVATION_PATH = useDebounce(derivationPath, 500); // TODO edit?
 
         const [action, setAction] = useState("deposit");
-        const [depositAmount, setDepositAmount] = useState(0.03);
+        const [depositAmount, setDepositAmount] = useState(0.01);
 
         useEffect(() => {
             setEthAddress()
+
+            if (walletArgs != null) {
+                const senderAddress = localStorage.getItem("sender");
+                const receiverAddress = localStorage.getItem("receiver");
+                const amount = parseFloat(localStorage.getItem("amount"));
+
+                console.log("sender", senderAddress, "receiver", receiverAddress, "amount", amount);
+                c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
+                    c.reconstructSignature(walletArgs, res.tx).then((res) => {
+                        setSignedTransaction(res);
+                        setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
+                        setStep("relay");
+                        console.log("signed tx", res);
+                    })
+                });
+            }
 
             async function setEthAddress() {
                 setStatus('Querying your address and balance');
@@ -62,8 +95,7 @@ export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: stri
                 const balance = await c.getBalance(address);
                 setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
             }
-        }, [signedAccountId, derivationPath]);
-
+        }, [signedAccountId, derivationPath, walletArgs]);
 
         async function deposit() {
             const {address, _} = await c.deriveAddress(nearAccount.accountId, DERIVATION_PATH);
@@ -86,11 +118,16 @@ export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: stri
 
         async function sendMoney(wallet: Wallet, senderAddress: string, receiverAddress: string, amount: number) {
             setStatus('🏗️ Creating transaction');
-            const { transaction, payload } = await c.createPayload(senderAddress, receiverAddress, amount);
+            const { tx, payload } = await c.createPayload(senderAddress, receiverAddress, amount);
+
+            // set these items in the local storage
+            localStorage.setItem("sender", senderAddress);
+            localStorage.setItem("receiver", receiverAddress);
+            localStorage.setItem("amount", amount.toString());
 
             setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
             try {
-                const signedTransaction = await c.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, transaction, senderAddress);
+                const signedTransaction = await c.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, {payload, tx}, senderAddress);
                 setSignedTransaction(signedTransaction);
                 setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
                 setStep('relay');
@@ -107,7 +144,8 @@ export const BlockchainComponentGenerator = (c: Chain<any>, derivationPath: stri
             try {
                 await c.relayTransaction(signedTransaction, setStatus, successCb);
             } catch (e) {
-                setStatus(`❌ Error: ${e.message}`);
+                console.log("relay error", e);
+                setStatus(`❌ Error: ${e.message} Reason: ${e.reason}`);
             }
 
             setStep('request');

@@ -5,15 +5,14 @@ import {
   deriveChildPublicKey,
   najPublicKeyStrToUncompressedHexPoint,
   uncompressedHexPointToEvmAddress
-} from '../services/kdf';
+} from './kdf';
 import {Common} from '@ethereumjs/common'
 import {Wallet} from "./near-wallet";
-import {Address, Chain, PayloadAndTx} from "../components/Chain";
-import {Transaction} from "bitcoinjs-lib";
+import {Address, Chain, EthereumWalletResult, PayloadAndTx} from "../components/Chain";
 import {Dispatch} from "react";
+import * as nearAPI from "near-api-js";
 
-
-export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction>{
+export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult>{
   private web3: Web3
   private chain_id: string;
 
@@ -52,7 +51,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction>{
     // Construct transaction
     const transactionData = {
       nonce,
-      gasLimit: 21000,
+      gasLimit: 35000,
       maxFeePerGas,
       maxPriorityFeePerGas,
       to: receiver,
@@ -68,10 +67,10 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction>{
     };
   }
 
-  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {ethPayload, transaction}: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<FeeMarketEIP1559Transaction> {
+  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {payload: ethPayload, tx}: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<string> {
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
-    const x = await wallet.callMethod({
+    const {big_r, s, recovery_id} = await wallet.callMethod({
       contractId,
       method: 'sign',
       args: {
@@ -84,22 +83,23 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction>{
       gas: '250000000000000',
       deposit: 1,
     });
+
     // const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
+    return await this.reconstructSignature({big_r, s, recovery_id}, tx)
+  }
 
+  // async reconstructSignature(big_r, S, recovery_id, transaction) {
+  async reconstructSignature(walletArgs, transaction) {
+    const e: EthereumWalletResult = walletArgs;
     // reconstruct the signature
-    const r = Buffer.from(x[0].substring(2), 'hex');
-    const s = Buffer.from(x[1], 'hex');
+    const r = Buffer.from(e.big_r.affine_point.substring(2), 'hex');
+    const s = Buffer.from(e.s.scalar, 'hex');
+    const v = e.recovery_id;
 
-    const candidates = [0n, 1n].map((v) => transaction.addSignature(v, r, s));
-    const signature = candidates.find((c) => c.getSenderAddress().toString().toLowerCase() === sender.toLowerCase());
-
-    if (!signature) {
-      throw new Error("Signature is not valid");
-    }
+    const signature = transaction.addSignature(v, r, s);
 
     if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
     if (!signature.verifySignature()) throw new Error("Signature is not valid");
-
     return signature;
   }
 

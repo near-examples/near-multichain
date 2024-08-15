@@ -7,9 +7,9 @@ import { EthereumView } from "./components/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
 import {nearAccountFromEnv} from "./web3/utils";
 import {Account} from "near-api-js";
-import {FinalExecutionOutcome} from "@near-wallet-selector/core";
-import BN from "bn.js";
-import ExecutionStatus from "@near-js/types"
+import { useSearchParams } from 'react-router-dom';
+import {EthereumWalletResult} from "./components/Chain";
+import React from 'react';
 
 // CONSTANTS
 export const MPC_CONTRACT = 'v1.signer-prod.testnet';
@@ -29,30 +29,47 @@ function App() {
   const [chain, setChain] = useState('eth');
   const [nearAccount, setNearAccount] = useState<Account>(null);
   const [paused, setPaused] = useState(false);
+  const [searchParams] = useSearchParams();
+    const [walletResult, setWalletResult] = useState(null);
 
-  useEffect(() => {
-    wallet.startUp(setSignedAccountId);
-    nearAccountFromEnv().then(async ({account}) => {
-      setNearAccount(account);
-      setPause(account);
-    })
+    // if we have transaction hashes in the url, then we want to call the function that gets big r and big s
+    useEffect(() => {
+        wallet.startUp(setSignedAccountId).then(() => {
+            const paramValue = searchParams.get('transactionHashes');
+            console.log('Query parameter value:', paramValue);
 
-      async function setPause(account: Account) {
-        try {
-            const res: FinalExecutionOutcome = await account.functionCall({
-                contractId: FAUCET_CONTRACT,
-                methodName: "paused",
-                gas: new BN('250000000000000'),
-                attachedDeposit: new BN("1"),
-            })
-            const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status
-            const successValue = Buffer.from(status, 'base64').toString('utf-8');
-            setPaused(successValue === "true");
-        } catch (e) {
-            setPaused(true);
-            setStatus(e)
-        }
-      }
+            // Take action based on query parameters
+            if (paramValue) {
+                wallet.getTransactionResult(paramValue).then((res) => {
+                    setWalletResult(res);
+                });
+            }
+        });
+
+        nearAccountFromEnv().then(async ({account}) => {
+          setNearAccount(account);
+          // setPause(account);
+        })
+
+
+          // async function setPause(account: Account) {
+          //   try {
+          //       const res: FinalExecutionOutcome = await account.functionCall({
+          //           contractId: FAUCET_CONTRACT,
+          //           methodName: "paused",
+          //           gas: new BN('250000000000000'),
+          //           attachedDeposit: new BN("1"),
+          //       })
+          //       const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status
+          //       const successValue = Buffer.from(status, 'base64').toString('utf-8');
+          //       setPaused(successValue === "true");
+          //   } catch (e) {
+          //       setPaused(true);
+          //       setStatus(e)
+          //   }
+          // }
+
+
     console.log("signed Account id", signedAccountId);
   }, []);
 
@@ -86,8 +103,8 @@ function App() {
                     </select>
                   </div>
 
-                  {chain === 'eth' && <EthereumView nearAccount={nearAccount} setStatus={setStatus}/>}
-                  {chain === 'btc' && <BitcoinView nearAccount={nearAccount} setStatus={setStatus}/>}
+                  {chain === 'eth' && <EthereumView nearAccount={nearAccount} setStatus={setStatus} walletArgs={walletResult}/>}
+                  {chain === 'btc' && <BitcoinView nearAccount={nearAccount} setStatus={setStatus} walletArgs={walletResult}/>}
                     <div className="mt-3 small text-center">
                         {status}
                     </div>

@@ -3,7 +3,7 @@ import * as ethers from 'ethers';
 import * as bitcoin from "bitcoinjs-lib";
 import {Network, Psbt, Transaction} from "bitcoinjs-lib";
 import {deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress} from './kdf';
-import {Address, Chain, PayloadAndTx} from "../components/Chain";
+import {Address, BitcoinWalletResult, Chain, PayloadAndTx} from "../components/Chain";
 import {Dispatch} from "react";
 import {Wallet} from "./near-wallet";
 
@@ -94,7 +94,7 @@ export class Bitcoin implements Chain<BTCPayload, Transaction>{
     };
   }
 
-  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {btcPayload, tx}: PayloadAndTx<BTCPayload, Transaction>, publicKey: string): Promise<Transaction> {
+  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {btcPayload, tx}: PayloadAndTx<BTCPayload, Transaction>, sender: string): Promise<Transaction> {
     const { psbt, utxos } = btcPayload;
 
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
@@ -106,17 +106,18 @@ export class Bitcoin implements Chain<BTCPayload, Transaction>{
 
     await Promise.all(
       utxos.map(async (_, index) => {
-        const publicKeyBuffer: Buffer = Buffer.from(publicKey);
+        const publicKeyBuffer: Buffer = Buffer.from(sender);
         await psbt.signInputAsync(index, {publicKey: publicKeyBuffer, sign});
       })
     );
 
     psbt.finalizeAllInputs();
-
-    return psbt.extractTransaction().toHex()
+    return psbt.extractTransaction().toHex();
   }
 
-  reconstructSignature(big_r, big_s) {
+  // async reconstructSignature(big_r, big_s) {
+  async reconstructSignature(walletArgs, transaction) {
+    const {big_r, big_s}: BitcoinWalletResult = walletArgs;
     const r = big_r.slice(2).padStart(64, "0");
     const s = big_s.padStart(64, "0");
 

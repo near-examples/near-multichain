@@ -93,7 +93,7 @@ export const BitcoinView = BlockchainComponentGenerator(BTC, TREASURY_DERIVATION
 //     setStatus('🔗 Relaying transaction to the Bitcoin network... this might take a while');
 //
 //     try {
-//       const txHash = await BTC.relayTransaction(signedTransaction);
+//       const txHash = await BTC.relayTransaction(signedTransaction, setStatus);
 //       setStatus(
 //         <>
 //           <a href={`https://blockstream.info/testnet/tx/${txHash}`} target="_blank"> ✅ Successful </a>
