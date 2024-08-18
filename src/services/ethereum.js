@@ -4,6 +4,7 @@ import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress } from '../services/kdf';
 import { Common } from '@ethereumjs/common'
 import { Contract, JsonRpcProvider } from "ethers";
+import { parseNearAmount } from "near-api-js/lib/utils/format";
 
 export class Ethereum {
   constructor(chain_rpc, chain_id) {
@@ -76,7 +77,7 @@ export class Ethereum {
     sessionStorage.setItem('derivation', path);
 
     const payload = Array.from(ethPayload);
-    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: '100000000000000000000000' });
+    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: parseNearAmount('0.1') });
     return { big_r, s, recovery_id };
   }
 
