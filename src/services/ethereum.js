@@ -4,6 +4,7 @@ import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress } from '../services/kdf';
 import { Common } from '@ethereumjs/common'
 import { Contract, JsonRpcProvider } from "ethers";
+import { parseNearAmount } from "near-api-js/lib/utils/format";
 
 export class Ethereum {
   constructor(chain_rpc, chain_id) {
@@ -26,9 +27,8 @@ export class Ethereum {
   }
 
   async getBalance(accountId) {
-    const balance = await this.web3.eth.getBalance(accountId)
-    const ONE_ETH = 1000000000000000000n;
-    return Number(balance * 100n / ONE_ETH) / 100;
+    const balance = await this.web3.eth.getBalance(accountId);
+    return this.web3.utils.fromWei(balance, "ether");
   }
 
   async getContractViewFunction(receiver, abi, methodName, args = []) {
@@ -77,7 +77,7 @@ export class Ethereum {
     sessionStorage.setItem('derivation', path);
 
     const payload = Array.from(ethPayload);
-    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: '1' });
+    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: parseNearAmount('0.1') });
     return { big_r, s, recovery_id };
   }
 
