@@ -61,11 +61,11 @@ function App() {
             margin: '10px', 
             backgroundColor: '#FFC10780', 
             borderRadius: '5px', 
-            fontSize: `15px`,
+            fontSize: '15px',
           }}>
         ⚠️ Warning: Minimum deposit is used. MPC congestion may cause transaction failure. See documentation for details.
          </div>
-         
+
       </div>
     </NearContext.Provider>
   )
