@@ -28,6 +28,7 @@
     "elliptic": "^6.5.5",
     "ethers": "^6.11.1",
     "hash.js": "^1.1.7",
+    "js-sha3": "^0.9.3",
     "keccak": "^3.0.4",
     "near-api-js": "^3.0.4",
     "prop-types": "^15.8.1",

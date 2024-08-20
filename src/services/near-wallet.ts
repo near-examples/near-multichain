@@ -40,6 +40,7 @@ export class Wallet {
    * @param {Function} accountChangeHook - a function that is called when the user signs in or out#
    * @returns {Promise<string>} - the accountId of the signed-in user 
    */
+
   startUp = async (accountChangeHook) => {
     this.selector = await setupWalletSelector({
       network: this.networkId,

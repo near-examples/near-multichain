@@ -6,13 +6,14 @@ import {deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompresse
 import {Address, BitcoinWalletResult, Chain, PayloadAndTx} from "../components/Chain";
 import {Dispatch} from "react";
 import {Wallet} from "./near-wallet";
+import {Account} from "near-api-js";
 
 export interface BTCPayload {
   utxos: any[],
   psbt: Psbt
 }
 
-export class Bitcoin implements Chain<BTCPayload, Transaction>{
+export class Bitcoin implements Chain<BTCPayload, Transaction, BitcoinWalletResult>{
   chain_rpc: string
   network: Network
 
@@ -24,7 +25,7 @@ export class Bitcoin implements Chain<BTCPayload, Transaction>{
   async deriveAddress(accountId, derivation_path): Promise<Address> {
     const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
     const address = await uncompressedHexPointToBtcAddress(publicKey, this.network);
-    return { publicKey: Buffer.from(publicKey, 'hex'), address };
+    return { publicKey: Buffer.from(publicKey, 'hex'), derivedEthNEAR: address };
   }
 
   async getBalance(address): Promise<number> {
@@ -94,8 +95,27 @@ export class Bitcoin implements Chain<BTCPayload, Transaction>{
     };
   }
 
-  async requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, {btcPayload, tx}: PayloadAndTx<BTCPayload, Transaction>, sender: string): Promise<Transaction> {
+  async requestSignatureToMPC(wallet: Wallet | Account , contractId: string, path: string, {btcPayload, tx}: PayloadAndTx<BTCPayload, Transaction>, sender: string): Promise<Transaction> {
     const { psbt, utxos } = btcPayload;
+    let cb;
+    if (wallet instanceof Wallet) {
+      cb = async function() {
+        return await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
+      }
+    } else if (wallet instanceof Account) {
+      cb = async function () {
+        await wallet.functionCall({
+          contractId,
+          methodName: 'sign',
+          args: {
+            request: {
+              payload,
+              path,
+              key_version: 0
+            }
+          }, gas: BigInt('250000000000000'), attachedDeposit: BigInt(1) });
+      }
+    }
 
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
     const sign = async (tx) => {
@@ -127,7 +147,7 @@ export class Bitcoin implements Chain<BTCPayload, Transaction>{
       throw new Error("Invalid signature length.");
     }
 
-    return rawSignature;
+    return rawSignature.toString();
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network

@@ -6,16 +6,22 @@ import { Wallet } from "./services/near-wallet";
 import { EthereumView } from "./components/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
 import {nearAccountFromEnv} from "./web3/utils";
-import {Account} from "near-api-js";
+import {Account, WalletConnection} from "near-api-js";
 import { useSearchParams } from 'react-router-dom';
 import {EthereumWalletResult} from "./components/Chain";
 import React from 'react';
-
+import BN from "bn.js";
+import {FinalExecutionOutcome} from "@near-wallet-selector/core";
+import {ExecutionStatus} from "@near-js/types"
 // CONSTANTS
-export const MPC_CONTRACT = 'v1.signer-prod.testnet';
-export const FAUCET_CONTRACT = 'faucetofnear.testnet';
+export const MPC_CONTRACT = 'v1.signer-dev.testnet';
+// TODO env variable
+export const MPC_CONTRACT_KEY = "secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq";
+
+export const FAUCET_CONTRACT = 'multifaucet.testnet';
 
 // NEAR WALLET
+
 const wallet = new Wallet({
     networkId: 'testnet',
     createAccessKeyFor: MPC_CONTRACT,
@@ -57,14 +63,16 @@ function App() {
           //       const res: FinalExecutionOutcome = await account.functionCall({
           //           contractId: FAUCET_CONTRACT,
           //           methodName: "paused",
+          //           args: {},
           //           gas: new BN('250000000000000'),
           //           attachedDeposit: new BN("1"),
           //       })
-          //       const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status
+          //       const {status}: ExecutionStatus = res.receipts_outcome[0].outcome.status;
           //       const successValue = Buffer.from(status, 'base64').toString('utf-8');
           //       setPaused(successValue === "true");
           //   } catch (e) {
           //       setPaused(true);
+          //       console.log("Pause error", e);
           //       setStatus(e)
           //   }
           // }

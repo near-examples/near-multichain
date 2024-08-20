@@ -12,13 +12,13 @@ import {BrowserLocalStorageKeyStore} from "near-api-js/lib/key_stores";
 
 export interface Address {
     publicKey: Buffer,
-    address: string
+    derivedEthNEAR: string
 }
 
 export interface Chain<PayloadType, TransactionType, WalletArgsType> {
     deriveAddress(accountId, derivation_path): Promise<Address>
     createPayload(sender: string, receiver: string, amount: number): Promise<PayloadAndTx<PayloadType, TransactionType>>
-    requestSignatureToMPC(wallet: Wallet, contractId: string, path: string, payloadAndTx: PayloadAndTx<PayloadType, TransactionType>, sender: string): Promise<TransactionType>
+    requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, payloadAndTx: PayloadAndTx<PayloadType, TransactionType>, sender: string): Promise<TransactionType>
     reconstructSignature(walletArgs: WalletArgsType, tx: TransactionType): Promise<string>
     relayTransaction(tx: TransactionType, setStatus: Dispatch<string>, successCb: (txHash: string, setStatus: Dispatch<string>) => void)
     getBalance(accountId: string): Promise<Number>
@@ -50,7 +50,6 @@ export interface PayloadAndTx<PayloadType, TransactionType> {
 export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivationPath: string, successCb: (txHash: string, setState: Dispatch<string>) => void) => {
     return ({setStatus, nearAccount, walletArgs} : ChainProps) => {
         const {wallet, signedAccountId} = useContext(NearContext);
-
         const [senderAddress, setSenderAddress] = useState("");
         const [receiverAddress, setReceiverAddress] = useState("");
 
@@ -58,9 +57,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         const [step, setStep] = useState("request");
         const [signedTransaction, setSignedTransaction] = useState(null);
 
-        const [derivation, setDerivation] = useState("-1");
-        const derivationPath = useDebounce(derivation, 500);
-        const DERIVATION_PATH = useDebounce(derivationPath, 500); // TODO edit?
+        const derivationPath = "-1";
 
         const [action, setAction] = useState("deposit");
         const [depositAmount, setDepositAmount] = useState(0.01);
@@ -75,6 +72,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
 
                 console.log("sender", senderAddress, "receiver", receiverAddress, "amount", amount);
                 c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
+                    console.log("payload", res, "wallet args", walletArgs);
                     c.reconstructSignature(walletArgs, res.tx).then((res) => {
                         setSignedTransaction(res);
                         setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
@@ -88,22 +86,26 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 setStatus('Querying your address and balance');
                 setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
-                const { address } = await c.deriveAddress(signedAccountId, derivationPath);
-                console.log("signed account id", signedAccountId, "derivation path", derivationPath, "address", address);
-                setSenderAddress(address);
+                if (signedAccountId && derivationPath) {
+                    const { derivedEthNEAR } = await c.deriveAddress(signedAccountId, derivationPath);
+                    console.log("signed account id", signedAccountId, "derivation path", derivationPath, "address", derivedEthNEAR);
+                    setSenderAddress(derivedEthNEAR);
 
-                const balance = await c.getBalance(address);
-                setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
+                    const balance = await c.getBalance(derivedEthNEAR);
+                    setStatus(`Your Ethereum address is: ${derivedEthNEAR}, balance: ${balance} ETH`);
+                }
             }
         }, [signedAccountId, derivationPath, walletArgs]);
 
+        // it can't be the same wallet for sending money for a deposit and a withdraw...
         async function deposit() {
-            const {address, _} = await c.deriveAddress(nearAccount.accountId, DERIVATION_PATH);
-            console.log("Derived", address);
+            const {derivedEthNEAR, _} = await c.deriveAddress(nearAccount.accountId, derivationPath);
+            console.log("Derived", derivedEthNEAR);
             console.log("wallet", wallet, "sender address", senderAddress, "deposit", depositAmount);
 
-            await sendMoney(wallet, senderAddress, address, depositAmount);
+            await sendMoney(wallet, senderAddress, derivedEthNEAR, depositAmount);
             console.log("doneee :)");
+
         }
 
         async function withdraw() {
@@ -112,14 +114,15 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
             }
 
-            const {derivedEthNEAR, _} = c.deriveAddress(nearAccount, DERIVATION_PATH);
-            await sendMoney(wallet, derivedEthNEAR, senderAddress, drop);
+            const {derivedEthNEAR, _} = c.deriveAddress(nearAccount, derivationPath);
+            await sendMoney(nearAccount, derivedEthNEAR, senderAddress, drop);
         }
 
-        async function sendMoney(wallet: Wallet, senderAddress: string, receiverAddress: string, amount: number) {
+        async function sendMoney(wallet: Wallet | Account, senderAddress: string, receiverAddress: string, amount: number) {
             setStatus('🏗️ Creating transaction');
             const { tx, payload } = await c.createPayload(senderAddress, receiverAddress, amount);
-
+            console.log("first payload", payload);
+            console.log("setting", "sender", senderAddress, "receiver", receiverAddress, "amount", amount);
             // set these items in the local storage
             localStorage.setItem("sender", senderAddress);
             localStorage.setItem("receiver", receiverAddress);
