@@ -77,7 +77,7 @@ export class Ethereum {
     sessionStorage.setItem('derivation', path);
 
     const payload = Array.from(ethPayload);
-    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: parseNearAmount('0.1') });
+    const { big_r, s, recovery_id } = await wallet.callMethod({ contractId, method: 'sign', args: { request: { payload, path, key_version: 0 } }, gas: '250000000000000', deposit: parseNearAmount('0.65') });
     return { big_r, s, recovery_id };
   }
 
