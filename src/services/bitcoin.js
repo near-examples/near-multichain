@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as ethers from 'ethers';
 import * as bitcoin from "bitcoinjs-lib";
 import { deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToBtcAddress } from '../services/kdf';
+import { parseNearAmount } from "near-api-js/lib/utils/format";
 
 export class Bitcoin {
   constructor(chain_rpc, network) {
@@ -85,7 +86,7 @@ export class Bitcoin {
     // Bitcoin needs to sign multiple utxos, so we need to pass a signer function
     const sign = async (tx) => {
       const payload = Array.from(ethers.getBytes(tx)).reverse();
-      const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
+      const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000', deposit: parseNearAmount('0.05')});
       return this.reconstructSignature(big_r, big_s);
     }
 
