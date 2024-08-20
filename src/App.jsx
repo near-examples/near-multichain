@@ -55,6 +55,17 @@ function App() {
         <div className="mt-3 small text-center">
           {status}
         </div>
+
+        <div style={{ 
+            padding: '10px', 
+            margin: '10px', 
+            backgroundColor: '#FFC10780', 
+            borderRadius: '5px', 
+            fontSize: `15px`,
+          }}>
+        ⚠️ Warning: Minimum deposit is used. MPC congestion may cause transaction failure. See documentation for details.
+         </div>
+         
       </div>
     </NearContext.Provider>
   )
