@@ -3,7 +3,6 @@ import {bytesToHex} from '@ethereumjs/util';
 import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
 import {
   deriveChildPublicKey,
-  najPublicKeyStrToUncompressedHexPoint,
   uncompressedHexPointToEvmAddress
 } from './kdf';
 import {Common} from '@ethereumjs/common'
@@ -14,6 +13,7 @@ import * as nearAPI from "near-api-js";
 import {MPC_CONTRACT_KEY} from "../App";
 import {c} from "vite/dist/node/types.d-aGj9QkWt";
 import {Account} from "near-api-js";
+import {FailoverRpcProvider} from "@near-js/providers"
 
 export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult>{
   private web3: Web3
@@ -26,7 +26,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   async deriveAddress(accountId, derivation_path): Promise<Address> {
-    const publicKey = MPC_CONTRACT_KEY;
+    const publicKey = await deriveChildPublicKey(MPC_CONTRACT_KEY, accountId, derivation_path);
     const address = uncompressedHexPointToEvmAddress(publicKey);
     return { publicKey: Buffer.from(publicKey, 'hex'), derivedEthNEAR: address };
   }

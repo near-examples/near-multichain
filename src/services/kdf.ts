@@ -4,7 +4,7 @@ import { keccak256 } from "viem";import hash from 'hash.js';
 import bs58check from 'bs58check';
 import { sha3_256 } from 'js-sha3'
 
-const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
+// const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
 
 export function najPublicKeyStrToUncompressedHexPoint() {
   const res = '04' + Buffer.from(base_decode(rootPublicKey.split(':')[1])).toString('hex');
