@@ -1,32 +1,28 @@
-import {Web3} from "web3"
-import {bytesToHex} from '@ethereumjs/util';
-import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
-import {
-  deriveChildPublicKey,
-  uncompressedHexPointToEvmAddress
-} from './kdf';
-import {Common} from '@ethereumjs/common'
-import {Wallet} from "./near-wallet";
-import {Address, Chain, EthereumWalletResult, PayloadAndTx} from "../components/Chain";
-import {Dispatch} from "react";
+import Web3 from "web3";
+import { bytesToHex } from '@ethereumjs/util';
+import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
+import { deriveChildPublicKey, uncompressedHexPointToEvmAddress, najPublicKeyStrToUncompressedHexPoint } from './kdf';
+import { Common } from '@ethereumjs/common';
+import { Wallet } from "./near-wallet";
+import { Address, Chain, EthereumWalletResult, PayloadAndTx } from "../components/Chain";
+import { Dispatch } from "react";
 import * as nearAPI from "near-api-js";
-import {MPC_CONTRACT_KEY} from "../App";
-import {c} from "vite/dist/node/types.d-aGj9QkWt";
-import {Account} from "near-api-js";
-import {FailoverRpcProvider} from "@near-js/providers"
+import { MPC_CONTRACT_KEY } from "../App";
+import { Account } from "near-api-js";
+import { FailoverRpcProvider } from "@near-js/providers";
 
-export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult>{
-  private web3: Web3
+export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult> {
+  private web3: Web3;
   private chain_id: string;
 
-  constructor(chain_rpc: string, chain_id) {
+  constructor(chain_rpc: string, chain_id: string) {
     this.web3 = new Web3(chain_rpc);
     this.chain_id = chain_id;
     this.queryGasPrice();
   }
 
   async deriveAddress(accountId, derivation_path): Promise<Address> {
-    const publicKey = await deriveChildPublicKey(MPC_CONTRACT_KEY, accountId, derivation_path);
+    const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
     const address = uncompressedHexPointToEvmAddress(publicKey);
     return { publicKey: Buffer.from(publicKey, 'hex'), derivedEthNEAR: address };
   }
@@ -38,13 +34,13 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   async getBalance(accountId: string) {
-    const balance = await this.web3.eth.getBalance(accountId)
+    const balance = await this.web3.eth.getBalance(accountId);
     const ONE_ETH = 1000000000000000000n;
     return Number(balance * 100n / ONE_ETH) / 100;
   }
 
-  // payload to actually send the transasction
-  async createPayload(sender, receiver, amount): Promise<PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>> {
+  // payload to actually send the transaction
+  async createPayload(sender, receiver, amount, data) {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce & gas price
@@ -54,29 +50,30 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     // Construct transaction
     const transactionData = {
       nonce,
-      gasLimit: 35000,
+      gasLimit: 50_000,
       maxFeePerGas,
       maxPriorityFeePerGas,
       to: receiver,
+      data: data,
       value: BigInt(this.web3.utils.toWei(amount, "ether")),
       chain: this.chain_id,
     };
 
-    console.log("transaction data", transactionData);
+    // Create a transaction
+    const transaction = FeeMarketEIP1559Transaction.fromTxData(transactionData, { common });
+    const payload = transaction.getHashedMessageToSign();
 
-    const tx = FeeMarketEIP1559Transaction.fromTxData(transactionData, {common});
-    // Return the message hash
-    return {
-      payload: Buffer.from(tx.getHashedMessageToSign()),
-      tx: tx,
-    };
+    // Store in sessionStorage for later
+    sessionStorage.setItem('transaction', transaction.serialize());
+
+    return { transaction, payload };
   }
 
-  async requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, {payload: ethPayload, tx}: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<string> {
+  async requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, { payload: ethPayload, tx }: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<string> {
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
     if (wallet instanceof Wallet) {
-      const {big_r, s, recovery_id} = await wallet.callMethod({
+      const { big_r, s, recovery_id } = await wallet.callMethod({
         contractId,
         method: 'sign',
         args: {
@@ -90,10 +87,9 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
         deposit: 1,
       });
 
-      // const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
-      return await this.reconstructSignature({big_r, s, recovery_id}, tx)
+      return await this.reconstructSignature(big_r, s, recovery_id, tx);
     } else if (wallet instanceof Account) {
-      const {big_r, s, recovery_id} = wallet.functionCall({
+      const { big_r, s, recovery_id } = wallet.functionCall({
         contractId: contractId,
         methodName: 'sign',
         args: {
@@ -105,26 +101,35 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
         },
         gas: BigInt('250000000000000'),
         attachedDeposit: BigInt(1),
-      })
+      });
 
-      return await this.reconstructSignature({big_r, s, recovery_id}, tx)
+      return await this.reconstructSignature(big_r, s, recovery_id, tx);
     }
   }
 
-  // async reconstructSignature(big_r, S, recovery_id, transaction) {
-  async reconstructSignature(walletArgs, transaction) {
-    const e: EthereumWalletResult = walletArgs;
-
+  async reconstructSignature(big_r, S, recovery_id, transaction) {
     // reconstruct the signature
-    const r = Buffer.from(e.big_r.affine_point.substring(2), 'hex');
-    const s = Buffer.from(e.s.scalar, 'hex');
-    const v = e.recovery_id;
+    console.log('reconstructSignature ??? ', big_r, S, recovery_id, transaction)
+    const rHex = big_r.affine_point.slice(2); // Remove the "03" prefix
+
+    const r = Buffer.from(rHex, 'hex');
+    const s = Buffer.from(S.scalar, 'hex');
+    const v = recovery_id;
 
     const signature = transaction.addSignature(v, r, s);
 
     if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
     if (!signature.verifySignature()) throw new Error("Signature is not valid");
     return signature;
+  }
+
+  
+  async reconstructSignatureFromLocalSession(big_r, s, recovery_id) {
+    const tx = sessionStorage.getItem('transaction')
+    const serialized = Uint8Array.from(JSON.parse(`[${tx}]`));
+    const transaction = FeeMarketEIP1559Transaction.fromSerializedTx(serialized);
+    console.log("transaction", transaction, serialized)
+    return this.reconstructSignature(big_r, s, recovery_id, transaction);
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network

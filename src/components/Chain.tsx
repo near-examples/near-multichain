@@ -9,6 +9,8 @@ import {a} from "vite/dist/node/types.d-aGj9QkWt";
 import {FeeMarketEIP1559Transaction} from "@ethereumjs/tx";
 import * as nearAPI from "near-api-js";
 import {BrowserLocalStorageKeyStore} from "near-api-js/lib/key_stores";
+import secp256k1 from 'secp256k1';
+import { useSearchParams } from 'react-router-dom';
 
 export interface Address {
     publicKey: Buffer,
@@ -20,6 +22,7 @@ export interface Chain<PayloadType, TransactionType, WalletArgsType> {
     createPayload(sender: string, receiver: string, amount: number): Promise<PayloadAndTx<PayloadType, TransactionType>>
     requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, payloadAndTx: PayloadAndTx<PayloadType, TransactionType>, sender: string): Promise<TransactionType>
     reconstructSignature(walletArgs: WalletArgsType, tx: TransactionType): Promise<string>
+    reconstructSignatureFromLocalSession(big_r, s, recovery_id, sender): Promise<string>
     relayTransaction(tx: TransactionType, setStatus: Dispatch<string>, successCb: (txHash: string, setStatus: Dispatch<string>) => void)
     getBalance(accountId: string): Promise<Number>
 }
@@ -62,6 +65,10 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         const [action, setAction] = useState("deposit");
         const [depositAmount, setDepositAmount] = useState(0.01);
 
+        const [searchParams] = useSearchParams();
+
+        const [txHash, setTxHash] = useState('')
+
         useEffect(() => {
             setEthAddress()
 
@@ -69,6 +76,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 const senderAddress = localStorage.getItem("sender");
                 const receiverAddress = localStorage.getItem("receiver");
                 const amount = parseFloat(localStorage.getItem("amount"));
+
 
                 console.log("sender", senderAddress, "receiver", receiverAddress, "amount", amount);
                 c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
@@ -86,6 +94,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 setStatus('Querying your address and balance');
                 setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
+                console.log('derivationPath:', derivationPath)
                 if (signedAccountId && derivationPath) {
                     const { derivedEthNEAR } = await c.deriveAddress(signedAccountId, derivationPath);
                     console.log("signed account id", signedAccountId, "derivation path", derivationPath, "address", derivedEthNEAR);
@@ -128,6 +137,8 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
             localStorage.setItem("receiver", receiverAddress);
             localStorage.setItem("amount", amount.toString());
 
+            setTxHash(tx)
+            console.log('??????', tx, payload)
             setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
             try {
                 const signedTransaction = await c.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, {payload, tx}, senderAddress);
@@ -143,6 +154,15 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         async function relayTransaction() {
             setLoading(true);
             setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
+            // const paramValue = searchParams.get('transactionHashes');
+            // @ts-ignore
+            const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
+
+            console.log('txHash: ', txHash)
+            console.log('signedTransaction', signedTransaction)
+            // const recoveredPubkeys = recoverPubkeyFromSignature(paramValue, signedTransaction.data)
+            // console.log('recoveredPubkeys', recoveredPubkeys)
+            const signedTransaction = await c.reconstructSignatureFromLocalSession(big_r, s, recovery_id, senderAddress);
 
             try {
                 await c.relayTransaction(signedTransaction, setStatus, successCb);
@@ -188,3 +208,22 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         )
     }
 }
+
+export const recoverPubkeyFromSignature = (transactionHash, rawSignature) => {
+    let pubkeys = [];
+    [0,1].forEach(num => {
+      const recoveredPubkey = secp256k1.recover(
+        transactionHash, // 32 byte hash of message
+        rawSignature, // 64 byte signature of message (not DER, 32 byte R and 32 byte S with 0x00 padding)
+        num, // number 1 or 0. This will usually be encoded in the base64 message signature
+        false, // true if you want result to be compressed (33 bytes), false if you want it uncompressed (65 bytes) this also is usually encoded in the base64 signature
+      );
+      console.log('recoveredPubkey', recoveredPubkey)
+      const buffer = Buffer.from(recoveredPubkey);
+      // Convert the Buffer to a hexadecimal string
+      const hexString = buffer.toString('hex');
+      pubkeys.push(hexString)
+    })
+    return pubkeys
+  }
+  

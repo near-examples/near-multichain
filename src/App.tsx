@@ -36,7 +36,7 @@ function App() {
   const [nearAccount, setNearAccount] = useState<Account>(null);
   const [paused, setPaused] = useState(false);
   const [searchParams] = useSearchParams();
-    const [walletResult, setWalletResult] = useState(null);
+  const [walletResult, setWalletResult] = useState(null);
 
     // if we have transaction hashes in the url, then we want to call the function that gets big r and big s
     useEffect(() => {

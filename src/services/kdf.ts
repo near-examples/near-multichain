@@ -4,7 +4,7 @@ import { keccak256 } from "viem";import hash from 'hash.js';
 import bs58check from 'bs58check';
 import { sha3_256 } from 'js-sha3'
 
-// const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
+const rootPublicKey = 'secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq';
 
 export function najPublicKeyStrToUncompressedHexPoint() {
   const res = '04' + Buffer.from(base_decode(rootPublicKey.split(':')[1])).toString('hex');
@@ -12,13 +12,14 @@ export function najPublicKeyStrToUncompressedHexPoint() {
 }
 
 export async function deriveChildPublicKey(
-    parentUncompressedPublicKeyHex,
-    signerId,
-    path = ''
+  parentUncompressedPublicKeyHex,
+  signerId,
+  path = '-1'
 ) {
+  console.log('path -> ', path)
   const ec = new EC("secp256k1");
   const scalarHex = sha3_256(
-      `near-mpc-recovery v0.1.0 epsilon derivation:${signerId},${path}`
+    `near-mpc-recovery v0.1.0 epsilon derivation:${signerId},${path}`
   );
 
   const x = parentUncompressedPublicKeyHex.substring(2, 66);
@@ -49,15 +50,15 @@ export async function uncompressedHexPointToBtcAddress(publicKeyHex, network) {
   const publicKeyBytes = Uint8Array.from(Buffer.from(publicKeyHex, 'hex'));
 
   const sha256HashOutput = await crypto.subtle.digest(
-      'SHA-256',
-      publicKeyBytes
+    'SHA-256',
+    publicKeyBytes
   );
 
   // Step 2: RIPEMD-160 hashing on the result of SHA-256
   const ripemd160 = hash
-      .ripemd160()
-      .update(Buffer.from(sha256HashOutput))
-      .digest();
+    .ripemd160()
+    .update(Buffer.from(sha256HashOutput))
+    .digest();
 
   // Step 3: Adding network byte (0x00 for Bitcoin Mainnet)
   const network_byte = network === 'bitcoin' ? 0x00 : 0x6f;
