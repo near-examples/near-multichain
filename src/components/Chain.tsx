@@ -99,13 +99,12 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
 
         // it can't be the same wallet for sending money for a deposit and a withdraw...
         async function deposit() {
-            const {derivedEthNEAR, _} = await c.deriveAddress(nearAccount.accountId, derivationPath);
+            const {derivedEthNEAR, _} = await c.deriveAddress(signedAccountId, derivationPath);
             console.log("Derived", derivedEthNEAR);
             console.log("wallet", wallet, "sender address", senderAddress, "deposit", depositAmount);
 
             await sendMoney(wallet, senderAddress, derivedEthNEAR, depositAmount);
             console.log("doneee :)");
-
         }
 
         async function withdraw() {
@@ -114,7 +113,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
             }
 
-            const {derivedEthNEAR, _} = c.deriveAddress(nearAccount, derivationPath);
+            const {derivedEthNEAR, _} = c.deriveAddress(nearAccount.accountId, derivationPath);
             await sendMoney(nearAccount, derivedEthNEAR, senderAddress, drop);
         }
 
@@ -142,7 +141,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
 
         async function relayTransaction() {
             setLoading(true);
-            setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
+            setStatus(`🔗 Relaying transaction ${signedTransaction} to the Ethereum network... this might take a while`);
 
             try {
                 await c.relayTransaction(signedTransaction, setStatus, successCb);

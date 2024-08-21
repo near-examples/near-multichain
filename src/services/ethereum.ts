@@ -14,8 +14,9 @@ import {MPC_CONTRACT_KEY} from "../App";
 import {c} from "vite/dist/node/types.d-aGj9QkWt";
 import {Account} from "near-api-js";
 import {FailoverRpcProvider} from "@near-js/providers"
+import secp256k1 from 'secp256k1';
 
-export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult>{
+export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult> {
   private web3: Web3
   private chain_id: string;
 
@@ -112,7 +113,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   // async reconstructSignature(big_r, S, recovery_id, transaction) {
-  async reconstructSignature(walletArgs, transaction) {
+  async reconstructSignature(walletArgs, transaction: FeeMarketEIP1559Transaction): Promise<string> {
     const e: EthereumWalletResult = walletArgs;
 
     // reconstruct the signature
@@ -124,17 +125,34 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 
     if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
     if (!signature.verifySignature()) throw new Error("Signature is not valid");
-    return signature;
+    return bytesToHex(signature.serialize());
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
-  async relayTransaction(signedTransaction: FeeMarketEIP1559Transaction, setStatus: Dispatch<string>, successCb: (txHash: string, setState: Dispatch<string>) => void) {
-    const serializedTx = bytesToHex(signedTransaction.serialize());
-    console.log("relay transaction pub key", bytesToHex(signedTransaction.getSenderPublicKey()));
-
-    const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
+  async relayTransaction(signedTransaction, setStatus: Dispatch<string>, successCb: (txHash: string, setState: Dispatch<string>) => void) {
+    // const serializedTx = bytesToHex(signedTransaction);
+    const relayed = await this.web3.eth.sendSignedTransaction(signedTransaction);
     const txHash = relayed.transactionHash;
 
     successCb(txHash, setStatus);
   }
+}
+
+
+export const recoverPubkeyFromSignature = (transactionHash, rawSignature) => {
+  let pubkeys = [];
+  [0,1].forEach(num => {
+    const recoveredPubkey = secp256k1.recover(
+        transactionHash, // 32 byte hash of message
+        rawSignature, // 64 byte signature of message (not DER, 32 byte R and 32 byte S with 0x00 padding)
+        num, // number 1 or 0. This will usually be encoded in the base64 message signature
+        false, // true if you want result to be compressed (33 bytes), false if you want it uncompressed (65 bytes) this also is usually encoded in the base64 signature
+    );
+    console.log('recoveredPubkey', recoveredPubkey)
+    const buffer = Buffer.from(recoveredPubkey);
+    // Convert the Buffer to a hexadecimal string
+    const hexString = buffer.toString('hex');
+    pubkeys.push(hexString)
+  })
+  return pubkeys
 }
