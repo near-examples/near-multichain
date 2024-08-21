@@ -1,8 +1,8 @@
 import {Web3} from "web3"
-import {bytesToHex} from '@ethereumjs/util';
+import {bigIntMax, bytesToHex} from '@ethereumjs/util';
 import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
 import {
-  deriveChildPublicKey,
+  deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint,
   uncompressedHexPointToEvmAddress
 } from './kdf';
 import {Common} from '@ethereumjs/common'
@@ -27,7 +27,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   async deriveAddress(accountId, derivation_path): Promise<Address> {
-    const publicKey = await deriveChildPublicKey(MPC_CONTRACT_KEY, accountId, derivation_path);
+    const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
     const address = uncompressedHexPointToEvmAddress(publicKey);
     return { publicKey: Buffer.from(publicKey, 'hex'), derivedEthNEAR: address };
   }
@@ -49,8 +49,12 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce & gas price
-    const nonce = await this.web3.eth.getTransactionCount(sender);
-    const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
+    // const nonce = await this.web3.eth.getTransactionCount(sender);
+    const nonce = 1000;
+    // const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
+    const maxFeePerGas = BigInt(1);
+    const maxPriorityFeePerGas = BigInt(1);
+    // const { maxFeePerGas, maxPriorityFeePerGas } = {maxFeePerGas, maxFeePerGas};
 
     // Construct transaction
     const transactionData = {

@@ -1,10 +1,13 @@
 import { base_decode } from 'near-api-js/lib/utils/serialize';
 import { ec as EC } from 'elliptic';
-import { keccak256 } from "viem";import hash from 'hash.js';
+import { keccak256 } from "viem";
+import hash from 'hash.js';
 import bs58check from 'bs58check';
 import { sha3_256 } from 'js-sha3'
+import {MPC_CONTRACT_KEY} from "../App";
 
 // const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
+const rootPublicKey = 'secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq';
 
 export function najPublicKeyStrToUncompressedHexPoint() {
   const res = '04' + Buffer.from(base_decode(rootPublicKey.split(':')[1])).toString('hex');
