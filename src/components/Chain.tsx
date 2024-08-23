@@ -1,14 +1,13 @@
 import {Wallet} from "../services/near-wallet";
 import React, {Dispatch, useContext, useEffect, useState} from "react";
 import {NearContext} from "../context";
-import {useDebounce} from "../hooks/debounce";
 import {callContract} from "../services/near";
 import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App";
 import {Account} from "near-api-js";
-import {a} from "vite/dist/node/types.d-aGj9QkWt";
-import {FeeMarketEIP1559Transaction} from "@ethereumjs/tx";
-import * as nearAPI from "near-api-js";
-import {BrowserLocalStorageKeyStore} from "near-api-js/lib/key_stores";
+import { ec as EC } from 'elliptic';
+
+import { secp256k1 } from "@noble/curves/secp256k1";
+import {Hex, hexToNumber} from "viem";
 
 export interface Address {
     publicKey: Buffer,
@@ -73,8 +72,8 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 console.log("sender", senderAddress, "receiver", receiverAddress, "amount", amount);
                 c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
                     console.log("payload", res, "wallet args", walletArgs);
-                    c.reconstructSignature(walletArgs, res.tx).then((res) => {
-                        setSignedTransaction(res);
+                    c.reconstructSignature(walletArgs, res.tx).then((sigRes) => {
+                        setSignedTransaction(sigRes);
                         setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
                         setStep("relay");
                         console.log("signed tx", res);
@@ -186,4 +185,36 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
             </>
         )
     }
+}
+export function recoverPublicKey(txHash: string, signature: string): string {
+    const ec = new EC('secp256k1');
+
+    // Remove the "0x" prefix if present
+    if (txHash.startsWith('0x')) {
+        txHash = txHash.slice(2);
+    }
+    if (signature.startsWith('0x')) {
+        signature = signature.slice(2);
+    }
+
+    // Ethereum signature format is r (32 bytes) + s (32 bytes) + v (1 byte)
+    const r = signature.slice(0, 64);
+    const s = signature.slice(64, 128);
+    const v = parseInt(signature.slice(128, 130), 16);
+
+    // Adjust v to be 0 or 1 (recovery param)
+    const recoveryParam = v >= 27 ? v - 27 : v;
+
+    // Convert to Buffer objects
+    const msgHashBuffer = Buffer.from(txHash, 'hex');
+    const sig = {
+        r: Buffer.from(r, 'hex'),
+        s: Buffer.from(s, 'hex'),
+    };
+
+    // Recover the public key
+    const recoveredKey = ec.recoverPubKey(msgHashBuffer, sig, recoveryParam);
+
+    // Encode the public key in uncompressed format (including the leading "04")
+    return '0x' + recoveredKey.encode('hex', false);
 }

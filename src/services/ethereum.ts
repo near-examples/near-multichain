@@ -1,6 +1,6 @@
 import {Web3} from "web3"
 import {bigIntMax, bytesToHex} from '@ethereumjs/util';
-import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
+import {FeeMarketEIP1559Transaction, LegacyTransaction} from '@ethereumjs/tx';
 import {
   deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint,
   uncompressedHexPointToEvmAddress
@@ -15,6 +15,9 @@ import {c} from "vite/dist/node/types.d-aGj9QkWt";
 import {Account} from "near-api-js";
 import {FailoverRpcProvider} from "@near-js/providers"
 import secp256k1 from 'secp256k1';
+import {keccak256} from "viem";
+import {recoverPublicKey} from "../components/Chain";
+
 
 export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult> {
   private web3: Web3
@@ -117,19 +120,26 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   // async reconstructSignature(big_r, S, recovery_id, transaction) {
-  async reconstructSignature(walletArgs, transaction: FeeMarketEIP1559Transaction): Promise<string> {
-    const e: EthereumWalletResult = walletArgs;
+  async reconstructSignature(walletArgs, transaction: LegacyTransaction): Promise<string> {
+    try {
+      const e: EthereumWalletResult = walletArgs;
 
-    // reconstruct the signature
-    const r = Buffer.from(e.big_r.affine_point.substring(2), 'hex');
-    const s = Buffer.from(e.s.scalar, 'hex');
-    const v = e.recovery_id;
+      // reconstruct the signature
+      const r = Buffer.from(e.big_r.affine_point.substring(2), 'hex');
+      const s = Buffer.from(e.s.scalar, 'hex');
+      const v = e.recovery_id;
 
-    const signature = transaction.addSignature(v, r, s);
+      const signature = transaction.addSignature(v, r, s);
+      const recoveredPk = recoverPublicKey(keccak256(transaction.getHashedMessageToSign()), keccak256(signature.serialize()))
+      console.log("recovered pk", recoveredPk);
 
-    if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
-    if (!signature.verifySignature()) throw new Error("Signature is not valid");
-    return bytesToHex(signature.serialize());
+      if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
+      if (!signature.verifySignature()) throw new Error("Signature is not valid");
+      return bytesToHex(signature.serialize());
+    } catch (e) {
+      console.log(e);
+      throw Error(e);
+    }
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
@@ -143,20 +153,4 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 }
 
 
-export const recoverPubkeyFromSignature = (transactionHash, rawSignature) => {
-  let pubkeys = [];
-  [0,1].forEach(num => {
-    const recoveredPubkey = secp256k1.recover(
-        transactionHash, // 32 byte hash of message
-        rawSignature, // 64 byte signature of message (not DER, 32 byte R and 32 byte S with 0x00 padding)
-        num, // number 1 or 0. This will usually be encoded in the base64 message signature
-        false, // true if you want result to be compressed (33 bytes), false if you want it uncompressed (65 bytes) this also is usually encoded in the base64 signature
-    );
-    console.log('recoveredPubkey', recoveredPubkey)
-    const buffer = Buffer.from(recoveredPubkey);
-    // Convert the Buffer to a hexadecimal string
-    const hexString = buffer.toString('hex');
-    pubkeys.push(hexString)
-  })
-  return pubkeys
-}
+

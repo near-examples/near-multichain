@@ -17,15 +17,15 @@
     "@near-wallet-selector/here-wallet": "^8.9.5",
     "@near-wallet-selector/modal-ui": "^8.9.5",
     "@near-wallet-selector/my-near-wallet": "^8.9.5",
+    "@noble/curves": "^1.4.0",
     "@types/jest": "^29.5.12",
-    "@types/node": "^20.14.12",
     "@vitejs/plugin-react": "^4.2.1",
     "axios": "^1.6.8",
     "bitcoinjs-lib": "^6.1.5",
     "bn.js": "^5.2.1",
     "bs58check": "^3.0.1",
     "dotenv": "^16.4.5",
-    "elliptic": "^6.5.5",
+    "elliptic": "^6.5.7",
     "ethers": "^6.11.1",
     "hash.js": "^1.1.7",
     "js-sha3": "^0.9.3",
@@ -36,16 +36,17 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.26.0",
     "rxjs": "^7.8.1",
+    "secp256k1": "3.4.0",
     "viem": "^2.18.2",
     "vite-plugin-node-polyfills": "^0.21.0",
-    "web3": "^4.6.0",
-    "secp256k1": "3.4.0"
+    "web3": "^4.6.0"
   },
   "overrides": {
     "near-api-js": "^3.0.4"
   },
   "devDependencies": {
     "@types/elliptic": "^6.4.18",
+    "@types/node": "^22.5.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@types/secp256k1": "^4.0.6",
