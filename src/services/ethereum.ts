@@ -1,23 +1,21 @@
 import {Web3} from "web3"
-import {bigIntMax, bytesToHex} from '@ethereumjs/util';
-import {FeeMarketEIP1559Transaction, LegacyTransaction} from '@ethereumjs/tx';
-import {
-  deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint,
-  uncompressedHexPointToEvmAddress
-} from './kdf';
+import {bytesToHex} from '@ethereumjs/util';
+import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
+import {deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress} from './kdf';
 import {Common} from '@ethereumjs/common'
 import {Wallet} from "./near-wallet";
-import {Address, Chain, EthereumWalletResult, PayloadAndTx} from "../components/Chain";
+import {
+  Address,
+  Chain,
+  EthereumWalletResult, getPubKey,
+  hexToUint8Array,
+  PayloadAndTx,
+  uint8ArrayToHex
+} from "../components/Chain";
 import {Dispatch} from "react";
-import * as nearAPI from "near-api-js";
-import {MPC_CONTRACT_KEY} from "../App";
-import {c} from "vite/dist/node/types.d-aGj9QkWt";
 import {Account} from "near-api-js";
-import {FailoverRpcProvider} from "@near-js/providers"
-import secp256k1 from 'secp256k1';
-import {keccak256} from "viem";
-import {recoverPublicKey} from "../components/Chain";
-
+import {Hex, keccak256, recoverPublicKey, RecoverPublicKeyReturnType} from "viem";
+import {hexDataSlice} from '@ethersproject/bytes';
 
 export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult> {
   private web3: Web3
@@ -52,12 +50,8 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce & gas price
-    // const nonce = await this.web3.eth.getTransactionCount(sender);
-    const nonce = 1000;
-    // const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
-    const maxFeePerGas = BigInt(1);
-    const maxPriorityFeePerGas = BigInt(1);
-    // const { maxFeePerGas, maxPriorityFeePerGas } = {maxFeePerGas, maxFeePerGas};
+    const nonce = await this.web3.eth.getTransactionCount(sender);
+    const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
 
     // Construct transaction
     const transactionData = {
@@ -73,11 +67,21 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     console.log("transaction data", transactionData);
 
     const tx = FeeMarketEIP1559Transaction.fromTxData(transactionData, {common});
+
     // Return the message hash
     return {
       payload: Buffer.from(tx.getHashedMessageToSign()),
       tx: tx,
     };
+  }
+
+
+  deserializeTx(str: string): FeeMarketEIP1559Transaction {
+    return FeeMarketEIP1559Transaction.fromSerializedTx(hexToUint8Array(str));
+  }
+
+  serializeTx(tx: FeeMarketEIP1559Transaction): string {
+    return uint8ArrayToHex(tx.serialize());
   }
 
   async requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, {payload: ethPayload, tx}: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<string> {
@@ -120,7 +124,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   // async reconstructSignature(big_r, S, recovery_id, transaction) {
-  async reconstructSignature(walletArgs, transaction: LegacyTransaction): Promise<string> {
+  async reconstructSignature(walletArgs, transaction: FeeMarketEIP1559Transaction): Promise<string> {
     try {
       const e: EthereumWalletResult = walletArgs;
 
@@ -130,8 +134,12 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
       const v = e.recovery_id;
 
       const signature = transaction.addSignature(v, r, s);
-      const recoveredPk = recoverPublicKey(keccak256(transaction.getHashedMessageToSign()), keccak256(signature.serialize()))
+      getPubKey(signature);
+      const signatureHex = `0x${r.toString('hex')}${s.toString('hex')}${v.toString(16).padStart(2, '0')}`;
+      const recoveredPk: RecoverPublicKeyReturnType = await recoverPublicKey({hash: keccak256(transaction.getHashedMessageToSign()), signature: signatureHex as Hex});
+
       console.log("recovered pk", recoveredPk);
+      console.log("recovered pk ethereum address", deriveEthereumAddress(recoveredPk));
 
       if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
       if (!signature.verifySignature()) throw new Error("Signature is not valid");
@@ -153,4 +161,16 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 }
 
 
+function deriveEthereumAddress(publicKey: string): string {
+  // Remove the '04' prefix from the public key
+  const uncompressedPublicKey = publicKey.startsWith('0x04')
+      ? publicKey.slice(4)
+      : publicKey;
+
+  // Hash the public key using Keccak-256
+  const publicKeyHash = keccak256(('0x' + uncompressedPublicKey) as Hex);
+
+  // Take the last 20 bytes of the hash to get the Ethereum address
+  return hexDataSlice(publicKeyHash, 12);
+}
 

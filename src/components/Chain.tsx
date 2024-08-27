@@ -5,9 +5,9 @@ import {callContract} from "../services/near";
 import {drop, FAUCET_CONTRACT, MPC_CONTRACT} from "../App";
 import {Account} from "near-api-js";
 import { ec as EC } from 'elliptic';
-
-import { secp256k1 } from "@noble/curves/secp256k1";
-import {Hex, hexToNumber} from "viem";
+import {FeeMarketEIP1559Transaction} from "@ethereumjs/tx";
+import {Hex, keccak256} from "viem";
+import {hexDataSlice} from "@ethersproject/bytes";
 
 export interface Address {
     publicKey: Buffer,
@@ -21,6 +21,8 @@ export interface Chain<PayloadType, TransactionType, WalletArgsType> {
     reconstructSignature(walletArgs: WalletArgsType, tx: TransactionType): Promise<string>
     relayTransaction(tx: TransactionType, setStatus: Dispatch<string>, successCb: (txHash: string, setStatus: Dispatch<string>) => void)
     getBalance(accountId: string): Promise<Number>
+    serializeTx(tx: TransactionType): string
+    deserializeTx(str: string): TransactionType
 }
 
 // TODO make this for Ethereum only
@@ -68,17 +70,17 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 const senderAddress = localStorage.getItem("sender");
                 const receiverAddress = localStorage.getItem("receiver");
                 const amount = parseFloat(localStorage.getItem("amount"));
+                const payload = localStorage.getItem("transaction");
 
                 console.log("sender", senderAddress, "receiver", receiverAddress, "amount", amount);
-                c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
-                    console.log("payload", res, "wallet args", walletArgs);
-                    c.reconstructSignature(walletArgs, res.tx).then((sigRes) => {
-                        setSignedTransaction(sigRes);
-                        setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
-                        setStep("relay");
-                        console.log("signed tx", res);
-                    })
-                });
+                const tx = c.deserializeTx(payload);
+                // c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
+                //     console.log("payload", res, "wallet args", walletArgs);
+                c.reconstructSignature(walletArgs, tx).then((sigRes) => {
+                    setSignedTransaction(sigRes);
+                    setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
+                    setStep("relay");
+                })
             }
 
             async function setEthAddress() {
@@ -98,7 +100,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
 
         // it can't be the same wallet for sending money for a deposit and a withdraw...
         async function deposit() {
-            const {derivedEthNEAR, _} = await c.deriveAddress(signedAccountId, derivationPath);
+            const {derivedEthNEAR, _} = await c.deriveAddress(nearAccount.accountId, derivationPath);
             console.log("Derived", derivedEthNEAR);
             console.log("wallet", wallet, "sender address", senderAddress, "deposit", depositAmount);
 
@@ -121,17 +123,19 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
             const { tx, payload } = await c.createPayload(senderAddress, receiverAddress, amount);
             console.log("first payload", payload);
             console.log("setting", "sender", senderAddress, "receiver", receiverAddress, "amount", amount);
+
             // set these items in the local storage
             localStorage.setItem("sender", senderAddress);
             localStorage.setItem("receiver", receiverAddress);
             localStorage.setItem("amount", amount.toString());
+            localStorage.setItem("transaction", c.serializeTx(tx));
 
             setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
             try {
-                const signedTransaction = await c.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, {payload, tx}, senderAddress);
-                setSignedTransaction(signedTransaction);
-                setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
-                setStep('relay');
+                await c.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, {payload, tx}, senderAddress);
+                // setSignedTransaction(signedTransaction);
+                // setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
+                // setStep('relay');
             } catch (e) {
                 setStatus(`❌ Error: ${e.message}`);
                 setLoading(false);
@@ -186,35 +190,67 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         )
     }
 }
-export function recoverPublicKey(txHash: string, signature: string): string {
-    const ec = new EC('secp256k1');
 
-    // Remove the "0x" prefix if present
-    if (txHash.startsWith('0x')) {
-        txHash = txHash.slice(2);
+// export function recoverPublicKey(txHash: string, signature: string): string {
+//     const ec = new EC('secp256k1');
+//
+//     // Remove the "0x" prefix if present
+//     if (txHash.startsWith('0x')) {
+//         txHash = txHash.slice(2);
+//     }
+//     if (signature.startsWith('0x')) {
+//         signature = signature.slice(2);
+//     }
+//
+//     // Ethereum signature format is r (32 bytes) + s (32 bytes) + v (1 byte)
+//     const r = signature.slice(0, 64);
+//     const s = signature.slice(64, 128);
+//     const v = parseInt(signature.slice(128, 130), 16);
+//
+//     // Adjust v to be 0 or 1 (recovery param)
+//     const recoveryParam = v >= 27 ? v - 27 : v;
+//
+//     // Convert to Buffer objects
+//     const msgHashBuffer = Buffer.from(txHash, 'hex');
+//     const sig = {
+//         r: Buffer.from(r, 'hex'),
+//         s: Buffer.from(s, 'hex'),
+//     };
+//
+//     // Recover the public key
+//     const recoveredKey = ec.recoverPubKey(msgHashBuffer, sig, recoveryParam);
+//
+//     // Encode the public key in uncompressed format (including the leading "04")
+//     return '0x' + recoveredKey.encode('hex', false);
+// }
+export function hexToUint8Array(hexString: string): Uint8Array {
+    if (hexString.startsWith('0x')) {
+        hexString = hexString.slice(2);
     }
-    if (signature.startsWith('0x')) {
-        signature = signature.slice(2);
+    const len = hexString.length;
+    const uint8Array = new Uint8Array(len / 2);
+    for (let i = 0; i < len; i += 2) {
+        uint8Array[i / 2] = parseInt(hexString.substr(i, 2), 16);
     }
+    return uint8Array;
+}
 
-    // Ethereum signature format is r (32 bytes) + s (32 bytes) + v (1 byte)
-    const r = signature.slice(0, 64);
-    const s = signature.slice(64, 128);
-    const v = parseInt(signature.slice(128, 130), 16);
+// Convert Uint8Array to hex
+export function uint8ArrayToHex(uint8Array: Uint8Array): string {
+    return '0x' + Array.from(uint8Array)
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
+}
 
-    // Adjust v to be 0 or 1 (recovery param)
-    const recoveryParam = v >= 27 ? v - 27 : v;
 
-    // Convert to Buffer objects
-    const msgHashBuffer = Buffer.from(txHash, 'hex');
-    const sig = {
-        r: Buffer.from(r, 'hex'),
-        s: Buffer.from(s, 'hex'),
-    };
+export function getPubKey(tx: FeeMarketEIP1559Transaction) {
+    const uncompressedPublicKeyHex = '0x' + uint8ArrayToHex(tx.getSenderPublicKey());
 
-    // Recover the public key
-    const recoveredKey = ec.recoverPubKey(msgHashBuffer, sig, recoveryParam);
+// Hash the public key using Keccak-256
+    const publicKeyHash = keccak256(uncompressedPublicKeyHex as Hex);
 
-    // Encode the public key in uncompressed format (including the leading "04")
-    return '0x' + recoveredKey.encode('hex', false);
+// Take the last 20 bytes of the hash to get the Ethereum address
+    const ethereumAddress = hexDataSlice(publicKeyHash, 12);
+
+    console.log('Ethereum Address:', ethereumAddress);
 }
