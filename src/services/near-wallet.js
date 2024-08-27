@@ -9,6 +9,7 @@ import { setupWalletSelector } from '@near-wallet-selector/core';
 import { setupHereWallet } from '@near-wallet-selector/here-wallet';
 import { setupMyNearWallet } from '@near-wallet-selector/my-near-wallet';
 import { setupMeteorWallet } from '@near-wallet-selector/meteor-wallet';
+import { setupBitteWallet } from '@near-wallet-selector/bitte-wallet';
 
 const THIRTY_TGAS = '30000000000000';
 const NO_DEPOSIT = '0';
@@ -31,12 +32,12 @@ export class Wallet {
   /**
    * To be called when the website loads
    * @param {Function} accountChangeHook - a function that is called when the user signs in or out#
-   * @returns {Promise<string>} - the accountId of the signed-in user 
+   * @returns {Promise<string>} - the accountId of the signed-in user
    */
   startUp = async (accountChangeHook) => {
     this.selector = setupWalletSelector({
       network: {networkId: this.networkId, nodeUrl: 'https://rpc.testnet.pagoda.co'},
-      modules: [setupMyNearWallet(), setupHereWallet(), setupMeteorWallet()]
+      modules: [setupMyNearWallet(), setupHereWallet(), setupMeteorWallet(), setupBitteWallet()]
     });
 
     const walletSelector = await this.selector;
