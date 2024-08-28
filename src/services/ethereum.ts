@@ -29,7 +29,9 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 
   async deriveAddress(accountId, derivation_path): Promise<Address> {
     const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
+    console.log("account id", accountId, "derivation path", derivation_path, "public key", publicKey);
     const address = uncompressedHexPointToEvmAddress(publicKey);
+    console.log("address", address);
     return { publicKey: Buffer.from(publicKey, 'hex'), derivedEthNEAR: address };
   }
 
@@ -89,7 +91,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 
   async requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, {payload: ethPayload, tx}: PayloadAndTx<Buffer, FeeMarketEIP1559Transaction>, sender: string): Promise<string> {
     // Ask the MPC to sign the payload
-    const payload = Array.from(ethPayload.reverse());
+    const payload = Array.from(ethPayload);
     if (wallet instanceof Wallet) {
       await wallet.callMethod({
         contractId,
@@ -102,7 +104,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
           }
         },
         gas: '250000000000000',
-        deposit: parseNearAmount('0.5'),
+        deposit: parseNearAmount('0.01'),
       });
 
       // const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
@@ -119,7 +121,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
           }
         },
         gas: BigInt('250000000000000'),
-        attachedDeposit: BigInt(parseNearAmount("0.5")),
+        attachedDeposit: BigInt(parseNearAmount("0.01")),
       })
 
       // return await this.reconstructSignature({big_r, s, recovery_id}, tx)

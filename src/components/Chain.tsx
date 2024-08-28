@@ -8,6 +8,7 @@ import { ec as EC } from 'elliptic';
 import {FeeMarketEIP1559Transaction} from "@ethereumjs/tx";
 import {Hex, keccak256} from "viem";
 import {hexDataSlice} from "@ethersproject/bytes";
+import {useDebounce} from "../hooks/debounce";
 
 export interface Address {
     publicKey: Buffer,
@@ -58,7 +59,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         const [step, setStep] = useState("request");
         const [signedTransaction, setSignedTransaction] = useState(null);
 
-        const derivationPath = "-1";
+        const derivationPath = "ethereum-1";
 
         const [action, setAction] = useState("deposit");
         const [depositAmount, setDepositAmount] = useState(0.01);
