@@ -18,7 +18,7 @@ export interface Chain<PayloadType, TransactionType, WalletArgsType> {
     deriveAddress(accountId, derivation_path): Promise<Address>
     createPayload(sender: string, receiver: string, amount: number): Promise<PayloadAndTx<PayloadType, TransactionType>>
     requestSignatureToMPC(wallet: Wallet | Account, contractId: string, path: string, payloadAndTx: PayloadAndTx<PayloadType, TransactionType>, sender: string): Promise<TransactionType>
-    reconstructSignature(walletArgs: WalletArgsType, tx: TransactionType): Promise<string>
+    reconstructSignature(walletArgs: WalletArgsType, tx: TransactionType): Promise<TransactionType>
     relayTransaction(tx: TransactionType, setStatus: Dispatch<string>, successCb: (txHash: string, setStatus: Dispatch<string>) => void)
     getBalance(accountId: string): Promise<Number>
     serializeTx(tx: TransactionType): string
@@ -70,10 +70,10 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
                 const senderAddress = localStorage.getItem("sender");
                 const receiverAddress = localStorage.getItem("receiver");
                 const amount = parseFloat(localStorage.getItem("amount"));
-                const payload = localStorage.getItem("transaction");
+                const txLocalMemory = localStorage.getItem("transaction");
 
                 console.log("sender", senderAddress, "receiver", receiverAddress, "amount", amount);
-                const tx = c.deserializeTx(payload);
+                const tx = c.deserializeTx(txLocalMemory);
                 // c.createPayload(senderAddress, receiverAddress, amount).then((res) => {
                 //     console.log("payload", res, "wallet args", walletArgs);
                 c.reconstructSignature(walletArgs, tx).then((sigRes) => {

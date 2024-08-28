@@ -14,7 +14,7 @@ import BN from "bn.js";
 import {FinalExecutionOutcome} from "@near-wallet-selector/core";
 import {ExecutionStatus} from "@near-js/types"
 // CONSTANTS
-export const MPC_CONTRACT = 'v1.signer-dev.testnet';
+export const MPC_CONTRACT = 'v1.signer-prod.testnet';
 // TODO env variable
 export const MPC_CONTRACT_KEY = "secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq";
 

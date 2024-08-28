@@ -1,5 +1,5 @@
-import {Web3} from "web3"
-import {bytesToHex} from '@ethereumjs/util';
+import {Bytes, Web3} from "web3"
+import {bytesToHex, PrefixedHexString} from '@ethereumjs/util';
 import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
 import {deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress} from './kdf';
 import {Common} from '@ethereumjs/common'
@@ -16,6 +16,7 @@ import {Dispatch} from "react";
 import {Account} from "near-api-js";
 import {Hex, keccak256, recoverPublicKey, RecoverPublicKeyReturnType} from "viem";
 import {hexDataSlice} from '@ethersproject/bytes';
+import {parseNearAmount} from '@near-js/utils'
 
 export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult> {
   private web3: Web3
@@ -24,7 +25,6 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   constructor(chain_rpc: string, chain_id) {
     this.web3 = new Web3(chain_rpc);
     this.chain_id = chain_id;
-    this.queryGasPrice();
   }
 
   async deriveAddress(accountId, derivation_path): Promise<Address> {
@@ -41,8 +41,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 
   async getBalance(accountId: string) {
     const balance = await this.web3.eth.getBalance(accountId)
-    const ONE_ETH = 1000000000000000000n;
-    return Number(balance * 100n / ONE_ETH) / 100;
+    return Number(this.web3.utils.fromWei(balance, "ether"));
   }
 
   // payload to actually send the transasction
@@ -52,13 +51,17 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     // Get the nonce & gas price
     const nonce = await this.web3.eth.getTransactionCount(sender);
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
+    console.log("max fee", maxFeePerGas, "max priorit fee", maxPriorityFeePerGas);
+
+    const maxFeeAdjusted = maxFeePerGas + BigInt(100);
+    const maxPriorityFeeAdjusted = maxPriorityFeePerGas + BigInt(100);
 
     // Construct transaction
     const transactionData = {
       nonce,
-      gasLimit: 35000,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
+      gasLimit: 50_000,
+      maxFeeAdjusted,
+      maxPriorityFeeAdjusted,
       to: receiver,
       value: BigInt(this.web3.utils.toWei(amount, "ether")),
       chain: this.chain_id,
@@ -77,7 +80,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 
 
   deserializeTx(str: string): FeeMarketEIP1559Transaction {
-    return FeeMarketEIP1559Transaction.fromSerializedTx(hexToUint8Array(str));
+    return FeeMarketEIP1559Transaction.fromSerializedTx(Uint8Array.from(JSON.parse(`[${hexToUint8Array(str)}]`)));
   }
 
   serializeTx(tx: FeeMarketEIP1559Transaction): string {
@@ -88,7 +91,7 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     // Ask the MPC to sign the payload
     const payload = Array.from(ethPayload.reverse());
     if (wallet instanceof Wallet) {
-      const {big_r, s, recovery_id} = await wallet.callMethod({
+      await wallet.callMethod({
         contractId,
         method: 'sign',
         args: {
@@ -99,13 +102,13 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
           }
         },
         gas: '250000000000000',
-        deposit: 1,
+        deposit: parseNearAmount('0.5'),
       });
 
       // const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
-      return await this.reconstructSignature({big_r, s, recovery_id}, tx)
+      // await this.reconstructSignature({big_r, s, recovery_id}, tx)
     } else if (wallet instanceof Account) {
-      const {big_r, s, recovery_id} = wallet.functionCall({
+      await wallet.functionCall({
         contractId: contractId,
         methodName: 'sign',
         args: {
@@ -116,15 +119,15 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
           }
         },
         gas: BigInt('250000000000000'),
-        attachedDeposit: BigInt(1),
+        attachedDeposit: BigInt(parseNearAmount("0.5")),
       })
 
-      return await this.reconstructSignature({big_r, s, recovery_id}, tx)
+      // return await this.reconstructSignature({big_r, s, recovery_id}, tx)
     }
   }
 
   // async reconstructSignature(big_r, S, recovery_id, transaction) {
-  async reconstructSignature(walletArgs, transaction: FeeMarketEIP1559Transaction): Promise<string> {
+  async reconstructSignature(walletArgs, transaction: FeeMarketEIP1559Transaction): Promise<FeeMarketEIP1559Transaction> {
     try {
       const e: EthereumWalletResult = walletArgs;
 
@@ -143,7 +146,8 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
 
       if (signature.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
       if (!signature.verifySignature()) throw new Error("Signature is not valid");
-      return bytesToHex(signature.serialize());
+      // return bytesToHex(signature.serialize());
+      return signature;
     } catch (e) {
       console.log(e);
       throw Error(e);
@@ -151,9 +155,9 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
-  async relayTransaction(signedTransaction, setStatus: Dispatch<string>, successCb: (txHash: string, setState: Dispatch<string>) => void) {
-    // const serializedTx = bytesToHex(signedTransaction);
-    const relayed = await this.web3.eth.sendSignedTransaction(signedTransaction);
+  async relayTransaction(signedTransaction: FeeMarketEIP1559Transaction, setStatus: Dispatch<string>, successCb: (txHash: string, setState: Dispatch<string>) => void) {
+    const serializedTx = bytesToHex(signedTransaction.serialize());
+    const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
     const txHash = relayed.transactionHash;
 
     successCb(txHash, setStatus);
