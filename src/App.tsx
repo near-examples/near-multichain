@@ -16,8 +16,6 @@ import {ExecutionStatus} from "@near-js/types"
 // CONSTANTS
 export const MPC_CONTRACT = 'v1.signer-dev.testnet';
 // TODO env variable
-export const MPC_CONTRACT_KEY = "secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq";
-
 export const FAUCET_CONTRACT = 'multifaucet.testnet';
 
 // NEAR WALLET
@@ -110,6 +108,8 @@ function App() {
                       <option value="btc"> ₿ BTC </option>
                     </select>
                   </div>
+
+                  <span></span>
 
                   {chain === 'eth' && <EthereumView nearAccount={nearAccount} setStatus={setStatus} walletArgs={walletResult}/>}
                   {chain === 'btc' && <BitcoinView nearAccount={nearAccount} setStatus={setStatus} walletArgs={walletResult}/>}

@@ -60,7 +60,6 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
         const [signedTransaction, setSignedTransaction] = useState(null);
 
         const derivationPath = "ethereum-1";
-
         const [action, setAction] = useState("deposit");
         const [depositAmount, setDepositAmount] = useState(0.01);
 
@@ -111,7 +110,7 @@ export const BlockchainComponentGenerator = (c: Chain<any, any, any>, derivation
 
         async function withdraw() {
             const allowed = await callContract(nearAccount, derivationPath, FAUCET_CONTRACT, "ETHEREUM");
-            if (!allowed || allowed) {
+            if (!allowed) {
                 setStatus(`❌ Error: not allowed to withdraw from faucet - make sure to wait 24 hours between calls`);
             }
 

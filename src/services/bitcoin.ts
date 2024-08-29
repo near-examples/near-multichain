@@ -97,9 +97,31 @@ export class Bitcoin implements Chain<BTCPayload, Transaction, BitcoinWalletResu
 
   async requestSignatureToMPC(wallet: Wallet | Account , contractId: string, path: string, {btcPayload, tx}: PayloadAndTx<BTCPayload, Transaction>, sender: string): Promise<Transaction> {
     const { psbt, utxos } = btcPayload;
-    let cb;
+
     if (wallet instanceof Wallet) {
-      cb = async function() {
+      const sign = async (tx) => {
+        const payload = Array.from(ethers.getBytes(tx)).reverse();
+        const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000', deposit: parseNearAmount('0.05')});
+        return this.reconstructSignature(big_r, big_s);
+      }
+
+      await Promise.all(
+          utxos.map(async (_, index) => {
+            await psbt.signInputAsync(index, { publicKey, sign });
+          })
+      );
+
+      psbt.finalizeAllInputs();
+
+      return psbt.extractTransaction().toHex()
+    }
+    let cb;
+
+    const payload = Array.from(ethers.getBytes(tx)).reverse();
+
+    if (wallet instanceof Wallet) {
+      const sign = async function() {
+        const [big_r, big_s] = await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000', deposit: parseNearAmount('0.05')});
         return await wallet.callMethod({ contractId, method: 'sign', args: { payload, path, key_version: 0 }, gas: '250000000000000' });
       }
     } else if (wallet instanceof Account) {

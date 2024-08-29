@@ -1,6 +1,6 @@
 import {Bytes, Web3} from "web3"
 import {bytesToHex, PrefixedHexString} from '@ethereumjs/util';
-import {FeeMarketEIP1559Transaction} from '@ethereumjs/tx';
+import {FeeMarketEIP1559Transaction, TxData} from '@ethereumjs/tx';
 import {deriveChildPublicKey, najPublicKeyStrToUncompressedHexPoint, uncompressedHexPointToEvmAddress} from './kdf';
 import {Common} from '@ethereumjs/common'
 import {Wallet} from "./near-wallet";
@@ -17,6 +17,7 @@ import {Account} from "near-api-js";
 import {Hex, keccak256, recoverPublicKey, RecoverPublicKeyReturnType} from "viem";
 import {hexDataSlice} from '@ethersproject/bytes';
 import {parseNearAmount} from '@near-js/utils'
+import {FeeMarketEIP1559TxData} from "@ethereumjs/tx/src/types";
 
 export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, EthereumWalletResult> {
   private web3: Web3
@@ -55,19 +56,28 @@ export class Ethereum implements Chain<Buffer, FeeMarketEIP1559Transaction, Ethe
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
     console.log("max fee", maxFeePerGas, "max priorit fee", maxPriorityFeePerGas);
 
-    const maxFeeAdjusted = maxFeePerGas + BigInt(100);
-    const maxPriorityFeeAdjusted = maxPriorityFeePerGas + BigInt(100);
+    const maxFeeAdjusted = maxFeePerGas + BigInt(10000000000);
+    const maxPriorityFeeAdjusted = maxPriorityFeePerGas + BigInt(10000000000);
 
-    // Construct transaction
-    const transactionData = {
-      nonce,
+    const transactionData: FeeMarketEIP1559TxData = {
+      nonce: nonce,
       gasLimit: 50_000,
-      maxFeeAdjusted,
-      maxPriorityFeeAdjusted,
+      maxFeePerGas: maxFeeAdjusted,
+      maxPriorityFeePerGas: maxPriorityFeeAdjusted,
       to: receiver,
       value: BigInt(this.web3.utils.toWei(amount, "ether")),
-      chain: this.chain_id,
-    };
+      chainId: BigInt(this.chain_id),
+    }
+    // // Construct transaction
+    // const transactionData: FeeMarketEIP1559Transaction = {
+    //   nonce,
+    //   gasLimit: 50_000,
+    //   maxFeeAdjusted,
+    //   maxPriorityFeeAdjusted,
+    //   to: receiver,
+    //   value: BigInt(this.web3.utils.toWei(amount, "ether")),
+    //   chain: this.chain_id,
+    // };
 
     console.log("transaction data", transactionData);
 

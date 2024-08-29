@@ -1,37 +1,29 @@
 import BN from "bn.js";
+import {Account} from "near-api-js";
+import {parseNearAmount} from "@near-js/utils";
+import {FinalExecutionOutcome} from "@near-wallet-selector/core";
+import {ExecutionStatus} from "@near-js/types";
+import {ChangeFunctionCallOptions} from "@near-js/accounts/lib/interface"
 
-export async function callContract(nearAccount, derivation_path, mpc_contract, chain) {
-
-    const payload = {
-        chain: chain
-    }
-    const payloadBuffer = Buffer.from(payload);
-    const args = {
-        request: {
-            payload: {
-                "chain": chain,
-            },
-            path: derivation_path,
-            key_version: 0,
-        },
-    }
-
-    const params = {
-        request: {
+export async function callContract(nearAccount: Account, derivation_path: string, mpc_contract: string, chain: string) {
+    try {
+        const rustPayload = {
+            chain: chain,
+        }
+        let params: ChangeFunctionCallOptions  = {
             contractId: mpc_contract,
             methodName: 'request_tokens',
-            args: args,
-            gas: new BN('300000000000000'),
-            attachedDeposit: new BN("1")
-        }
-    }
+            args: rustPayload,
+            gas: BigInt('250000000000000'),
+            attachedDeposit: BigInt(parseNearAmount("0.01")),
+        };
+        const res: FinalExecutionOutcome = await nearAccount.functionCall(params);
 
-    try {
-        const res = await nearAccount.functionCall(params);
         if (res.receipts_outcome.length === 0) {
             throw new Error("no receipt outcomes");
         }
-        const successValue = Buffer.from(res.receipts_outcome[0].outcome.status.SuccessValue,
+        const executionStatus = res.receipts_outcome[0].outcome.status as ExecutionStatus;
+        const successValue = Buffer.from(executionStatus.SuccessValue,
             'base64').toString('utf-8');
         return successValue === 'true';
     } catch (e) {
