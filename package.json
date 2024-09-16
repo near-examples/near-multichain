@@ -39,7 +39,7 @@
     "web3": "^4.6.0"
   },
   "overrides": {
-    "near-api-js": "^3.0.4"
+    "near-api-js": "^5.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
