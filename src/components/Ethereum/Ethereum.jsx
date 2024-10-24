@@ -7,14 +7,16 @@ import PropTypes from 'prop-types';
 import { useRef } from "react";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
+import { getTransactionHashes } from '../../services/utils';
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
 
-export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } }) {
+export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
+  const transactions = getTransactionHashes();
   const [step, setStep] = useState(transactions ? 'relay' : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
 

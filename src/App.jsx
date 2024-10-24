@@ -8,14 +8,9 @@ import { BitcoinView } from './components/Bitcoin';
 // CONSTANTS
 const MPC_CONTRACT = 'v1.signer-prod.testnet';
 
-// NEAR WALLET
+// NEAR WALLET CONNECTION
 const wallet = new Wallet({ network: 'testnet' });
 
-// parse transactionHashes from URL
-const txHash = new URLSearchParams(window.location.search).get(
-  'transactionHashes'
-);
-const transactions = txHash ? txHash.split(',') : [];
 
 function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
@@ -68,10 +63,10 @@ function App() {
             </div>
 
             {chain === 'eth' && (
-              <EthereumView props={{ setStatus, MPC_CONTRACT, transactions }} />
+              <EthereumView props={{ setStatus, MPC_CONTRACT}} />
             )}
             {chain === 'btc' && (
-              <BitcoinView props={{ setStatus, MPC_CONTRACT, transactions }} />
+              <BitcoinView props={{ setStatus, MPC_CONTRACT}} />
             )}
           </div>
         )}
