@@ -62,12 +62,8 @@ function App() {
               </select>
             </div>
 
-            {chain === 'eth' && (
-              <EthereumView props={{ setStatus, MPC_CONTRACT}} />
-            )}
-            {chain === 'btc' && (
-              <BitcoinView props={{ setStatus, MPC_CONTRACT}} />
-            )}
+            {chain === 'eth' && ( <EthereumView props={{ setStatus, MPC_CONTRACT}} /> )}
+            {chain === 'btc' && ( <BitcoinView props={{ setStatus, MPC_CONTRACT}} /> )}
           </div>
         )}
 

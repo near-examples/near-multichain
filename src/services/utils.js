@@ -4,5 +4,3 @@ export function getTransactionHashes() {
     const txHash = queryParams.get('transactionHashes');
     return txHash ? txHash.split(',') : [];
   }
-
-  
