@@ -26,23 +26,22 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
   const derivationPath = useDebounce(derivation, 1200);
   const childRef = useRef();
 
-  useEffect(() => {
-    // special case for web wallet that reload the whole page
-    if (reloaded && senderAddress) signTransaction()
+   // Handle signing transaction when the page is reloaded and senderAddress is set
+   useEffect(() => {
+    if (reloaded && senderAddress) {
+      signTransaction();
+    }
 
     async function signTransaction() {
       const { big_r, s, recovery_id } = await wallet.getTransactionResult(getTransactionHashes()[0]);
-      console.log({ big_r, s, recovery_id });
-      const signedTransaction = await Eth.reconstructSignatureFromLocalSession(big_r, s, recovery_id, senderAddress);
-      setSignedTransaction(signedTransaction);
-      setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
+      const signedTx = await Eth.reconstructSignatureFromLocalSession(big_r, s, recovery_id, senderAddress);
+      setSignedTransaction(signedTx);
+      setStatus('✅ Signed payload ready to be relayed to the Ethereum network');
       setStep('relay');
-
       setReloaded(false);
       removeUrlParams();
     }
-
-  }, [senderAddress]);
+  }, [senderAddress, reloaded, wallet]);
 
    // Handle changes to derivation path and query Ethereum address and balance
    useEffect(() => {
@@ -67,19 +66,6 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
       setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
     }
   };
-
-  useEffect(() => {
-    setEthAddress()
-    console.log(derivationPath)
-    async function setEthAddress() {
-      const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
-      setSenderAddress(address);
-      setSenderLabel(address);
-
-      const balance = await Eth.getBalance(address);
-      if (!reloaded) setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
-    }
-  }, [derivationPath]);
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
