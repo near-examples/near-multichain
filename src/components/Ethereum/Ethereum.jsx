@@ -44,12 +44,29 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
 
   }, [senderAddress]);
 
-  useEffect(() => {
-    setSenderLabel('Waiting for you to stop typing...')
+   // Handle changes to derivation path and query Ethereum address and balance
+   useEffect(() => {
+    resetAddressState();
+    fetchEthereumAddress();
+  }, [derivationPath, signedAccountId]);
+
+  const resetAddressState = () => {
+    setSenderLabel('Waiting for you to stop typing...');
     setStatus('Querying Ethereum address and Balance...');
-    setSenderAddress(null)
+    setSenderAddress(null);
     setStep('request');
-  }, [derivation]);
+  };
+
+  const fetchEthereumAddress = async () => {
+    const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
+    setSenderAddress(address);
+    setSenderLabel(address);
+
+    if (!reloaded) {
+      const balance = await Eth.getBalance(address);
+      setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
+    }
+  };
 
   useEffect(() => {
     setEthAddress()
