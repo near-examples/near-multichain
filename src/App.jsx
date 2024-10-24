@@ -23,29 +23,26 @@ function App() {
   return (
     <NearContext.Provider value={{ wallet, signedAccountId }}>
       <Navbar />
-      <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-100'>
+      <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-75'>
         <h2 className='text-center text-white'> NEAR Multi-Chain Demo</h2>
-        <blockquote className='blockquote w-50'>
-          <p className='mb-0'>
-            Securely manage countless accounts across multiple blockchain
-            platforms with a single NEAR account.
-          </p>
-        </blockquote>
-        <figcaption className='blockquote-footer text-end'>
-          Powered by {''}
-          <a
-            href='https://docs.near.org/concepts/abstraction/chain-signatures'
-            className='text-info'
-          >
-            <b>Chain Signatures</b>
-          </a>
-        </figcaption>
-
+        <div className='alert alert-primary w-50'>
+          Securely manage countless accounts across multiple blockchain
+          platforms with a single NEAR account.
+          <figcaption className='blockquote-footer text-end'>
+            Powered by {''}
+            <a
+              href='https://docs.near.org/concepts/abstraction/chain-signatures'
+              className='text-info'
+            >
+              <b>Chain Signatures</b>
+            </a>
+          </figcaption>
+        </div>
         {signedAccountId && (
           <div className='card mb-1 w-50' style={{ minWidth: '30rem' }}>
             <div className='card-body'>
               <div className='input-group input-group-sm mt-3 mb-3'>
-                <span className='input-group-text' id='chain'>
+                <span className='input-group-text bg-light text-black' id='chain'>
                   MPC Contract ID
                 </span>
                 <input
@@ -57,7 +54,7 @@ function App() {
               </div>
 
               <div className='input-group input-group-sm my-2 mb-4'>
-                <span className='input-group-text' id='chain'>
+                <span className='input-group-text bg-light text-black' id='chain'>
                   Destination Chain
                 </span>
                 <select
