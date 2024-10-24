@@ -15,18 +15,15 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
-  const transactions = getTransactionHashes();
-  const [step, setStep] = useState(transactions ? 'relay' : "request");
+  const [step, setStep] = useState(getTransactionHashes() ? 'relay' : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
-
   const [senderLabel, setSenderLabel] = useState("")
   const [senderAddress, setSenderAddress] = useState("")
   const [action, setAction] = useState("transfer")
-  const [derivation, setDerivation] = useState(sessionStorage.getItem('derivation') || "ethereum-1");
+  const [derivation, setDerivation] = useState(sessionStorage.getItem('derivation') || "ethereum-1");  
+  const [reloaded, setReloaded] = useState(!!getTransactionHashes().length);
+
   const derivationPath = useDebounce(derivation, 1200);
-
-  const [reloaded, setReloaded] = useState(transactions.length? true : false);
-
   const childRef = useRef();
 
   useEffect(() => {
@@ -34,7 +31,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
     if (reloaded && senderAddress) signTransaction()
 
     async function signTransaction() {
-      const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
+      const { big_r, s, recovery_id } = await wallet.getTransactionResult(getTransactionHashes()[0]);
       console.log({ big_r, s, recovery_id });
       const signedTransaction = await Eth.reconstructSignatureFromLocalSession(big_r, s, recovery_id, senderAddress);
       setSignedTransaction(signedTransaction);
