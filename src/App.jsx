@@ -23,13 +23,18 @@ function App() {
   return (
     <NearContext.Provider value={{ wallet, signedAccountId }}>
       <Navbar />
-      <div className='container text-light'>
-        <h4> 🔗 NEAR Multi Chain </h4>
-        <p className='small'>
-          Safely control accounts on other chains through the NEAR MPC service.
+      <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-100'>
+        <h3 className='text-center'> NEAR Multi-Chain Demo</h3>
+        <h5 className='text-center'>powered by Chain Signatures</h5>
+        <p className='text-center small'>
+          Safely control accounts on other chains using Chain Signatures MPC
+          service.
+          <br />
           Learn more in the{' '}
-          <a href='https://docs.near.org/abstraction/chain-signatures' className="text-info">
-            {' '}
+          <a
+            href='https://docs.near.org/abstraction/chain-signatures'
+            className='text-info'
+          >
             <b>documentation</b>
           </a>
           .
@@ -38,16 +43,19 @@ function App() {
         {signedAccountId && (
           <div style={{ width: '50%', minWidth: '400px' }}>
             <div className='input-group input-group-sm mt-3 mb-3'>
+              <span className='input-group-text' id='chain'>
+                Chain Signatures Contract ID
+              </span>
               <input
                 className='form-control text-center bg-dark text-light'
                 type='text'
-                value={`Chain Signatures MPC Contract: ${MPC_CONTRACT}`}
+                value={`${MPC_CONTRACT}`}
                 disabled
               />
             </div>
 
             <div className='input-group input-group-sm my-2 mb-4'>
-              <span className='text-primary input-group-text' id='chain'>
+              <span className='input-group-text' id='chain'>
                 Chain
               </span>
               <select
@@ -61,8 +69,12 @@ function App() {
               </select>
             </div>
 
-            {chain === 'eth' && <EthereumView props={{ setStatus, MPC_CONTRACT }} />}
-            {chain === 'btc' && <BitcoinView props={{ setStatus, MPC_CONTRACT }} />}
+            {chain === 'eth' && (
+              <EthereumView props={{ setStatus, MPC_CONTRACT }} />
+            )}
+            {chain === 'btc' && (
+              <BitcoinView props={{ setStatus, MPC_CONTRACT }} />
+            )}
           </div>
         )}
 
