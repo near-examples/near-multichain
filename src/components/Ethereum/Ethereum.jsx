@@ -10,6 +10,7 @@ import { FunctionCallForm } from './FunctionCall';
 
 const SEPOLIA = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', SEPOLIA);
+const sepoliaGasPrice = await Eth.fetchSepoliaGasPrice();
 
 export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
@@ -234,6 +235,27 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
           props={{ Eth, senderAddress, loading }}
         />
       )}
+      <div className='table-responsive'>
+        <table className='table table-bordered table-dark text-center'>
+          <caption className='caption-top text-center text-bg-warning'>Sepolia Gas Prices</caption>{' '}
+          <thead>
+            <tr>
+              <th scope='col'>Price</th>
+              <th scope='col'>Unit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{sepoliaGasPrice[1]}</td> {/* Gas Price in GWEI */}
+              <td>GWEI</td>
+            </tr>
+            <tr>
+              <td>{sepoliaGasPrice[0]}</td> {/* Transaction Cost in ETH */}
+              <td>ETH</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div className='text-center'>
         {step === 'request' && (
