@@ -24,24 +24,22 @@ function App() {
     <NearContext.Provider value={{ wallet, signedAccountId }}>
       <Navbar />
       <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-75'>
-        <div className='alert alert-primary'>
-          Securely manage accounts across multiple blockchain
-          platforms with a single NEAR account.
+        <div className='alert alert-primary w-auto text-center'>
+         One account controls endless numbers of accounts across chains. 🚀
           <br />
-          <small className='text-muted text-end'>
-            👉 Powered by {' '}
+          <small className='text-muted'>
+            Powered by 👉 {' '} 
             <a
               href='https://docs.near.org/concepts/abstraction/chain-signatures'
               className='text-info'
             >
-              <b>Chain Signatures</b> 
+              <b className=''>Chain Signatures</b>
             </a>
-            {' '}
-            👈
           </small>
         </div>
+
         {signedAccountId && (
-          <div className='card mb-1 w-auto' style={{ minWidth: '30rem' }}>
+          <div className='card mb-1 w-auto' style={{ minWidth: '35rem' }}>
             <div className='card-body'>
               <div className='input-group input-group-sm mt-3 mb-3'>
                 <span
