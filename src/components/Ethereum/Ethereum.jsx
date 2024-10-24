@@ -235,27 +235,6 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
           props={{ Eth, senderAddress, loading }}
         />
       )}
-      <div className='table-responsive'>
-        <table className='table table-bordered table-dark text-center'>
-          <caption className='caption-top text-center text-bg-warning'>Sepolia Gas Prices</caption>{' '}
-          <thead>
-            <tr>
-              <th scope='col'>Price</th>
-              <th scope='col'>Unit</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{sepoliaGasPrice[1]}</td> {/* Gas Price in GWEI */}
-              <td>GWEI</td>
-            </tr>
-            <tr>
-              <td>{sepoliaGasPrice[0]}</td> {/* Transaction Cost in ETH */}
-              <td>ETH</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
 
       <div className='text-center'>
         {step === 'request' && (
@@ -276,6 +255,29 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
             Relay Transaction
           </button>
         )}
+        <div className='table-responsive'>
+          <table className='table table-bordered table-dark text-center'>
+            <caption className='caption-top text-center text-bg-warning'>
+              Sepolia Gas Prices
+            </caption>{' '}
+            <thead>
+              <tr>
+                <th scope='col'>Price</th>
+                <th scope='col'>Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{sepoliaGasPrice[1]}</td> {/* Gas Price in GWEI */}
+                <td>GWEI</td>
+              </tr>
+              <tr>
+                <td>{sepoliaGasPrice[0]}</td> {/* Transaction Cost in ETH */}
+                <td>ETH</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );

@@ -11,7 +11,6 @@ const MPC_CONTRACT = 'v1.signer-prod.testnet';
 // NEAR WALLET CONNECTION
 const wallet = new Wallet({ network: 'testnet' });
 
-
 function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
   const [status, setStatus] = useState('Please login to request a signature');
@@ -24,12 +23,12 @@ function App() {
   return (
     <NearContext.Provider value={{ wallet, signedAccountId }}>
       <Navbar />
-      <div className='container'>
+      <div className='container text-light'>
         <h4> 🔗 NEAR Multi Chain </h4>
         <p className='small'>
           Safely control accounts on other chains through the NEAR MPC service.
           Learn more in the{' '}
-          <a href='https://docs.near.org/abstraction/chain-signatures'>
+          <a href='https://docs.near.org/abstraction/chain-signatures' className="text-info">
             {' '}
             <b>documentation</b>
           </a>
@@ -40,7 +39,7 @@ function App() {
           <div style={{ width: '50%', minWidth: '400px' }}>
             <div className='input-group input-group-sm mt-3 mb-3'>
               <input
-                className='form-control text-center'
+                className='form-control text-center bg-dark text-light'
                 type='text'
                 value={`Chain Signatures MPC Contract: ${MPC_CONTRACT}`}
                 disabled
@@ -52,7 +51,7 @@ function App() {
                 Chain
               </span>
               <select
-                className='form-select'
+                className='form-select bg-dark text-light'
                 aria-describedby='chain'
                 value={chain}
                 onChange={(e) => setChain(e.target.value)}
@@ -62,12 +61,12 @@ function App() {
               </select>
             </div>
 
-            {chain === 'eth' && ( <EthereumView props={{ setStatus, MPC_CONTRACT}} /> )}
-            {chain === 'btc' && ( <BitcoinView props={{ setStatus, MPC_CONTRACT}} /> )}
+            {chain === 'eth' && <EthereumView props={{ setStatus, MPC_CONTRACT }} />}
+            {chain === 'btc' && <BitcoinView props={{ setStatus, MPC_CONTRACT }} />}
           </div>
         )}
 
-        <div className='mt-3 small text-center'>{status}</div>
+        <div className='mt-3 small text-center text-warning'>{status}</div>
 
         <div
           style={{
