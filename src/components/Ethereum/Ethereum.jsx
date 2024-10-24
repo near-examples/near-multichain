@@ -8,8 +8,8 @@ import { getTransactionHashes } from '../../services/utils';
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
 
-const Sepolia = 11155111;
-const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
+const SEPOLIA = 11155111;
+const Eth = new Ethereum('https://rpc2.sepolia.org', SEPOLIA);
 
 export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
   const { wallet, signedAccountId } = useContext(NearContext);
