@@ -113,6 +113,12 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
     setLoading(false);
   }
 
+  function removeUrlParams () {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('transactionHashes');
+    window.history.replaceState({}, document.title, url);
+  }
+
   return (
     <>
       <div className="row mb-3">
@@ -143,17 +149,11 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT} }) {
     </>
   )
 
-  function removeUrlParams () {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('transactionHashes');
-    window.history.replaceState({}, document.title, url);
-  }
 }
 
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
-    transactions: PropTypes.arrayOf(PropTypes.string).isRequired
   }).isRequired
 };
