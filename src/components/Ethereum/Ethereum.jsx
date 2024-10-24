@@ -161,6 +161,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
   return (
     <>
+      {/* Form Inputs */}
       <div className='row mb-3'>
         <label className='col-sm-2 col-form-label col-form-label-sm'>
           Path:
@@ -176,44 +177,29 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
         </div>
       </div>
       <div className='row mb-0'>
-        <label
-          className='col-sm-2 col-form-label col-form-label-sm'
-          style={{ fontSize: '0.75rem' }}
-        >
+        <label className='col-sm-2 col-form-label col-form-label-sm'>
           Address:
         </label>
         <div className='col-sm-10'>
-          <div
-            className='form-text'
-            id='eth-sender'
-            style={{ fontSize: '0.75rem' }}
-          >
+          <div className='form-text' id='eth-sender'>
             {senderLabel}
           </div>
         </div>
       </div>
 
-      {balance && ( // Conditionally render balance if available
+      {balance && (
         <div className='row mb-0'>
-          <label
-            className='col-sm-2 col-form-label col-form-label-sm'
-            style={{ fontSize: '0.75rem' }}
-          >
+          <label className='col-sm-2 col-form-label col-form-label-sm'>
             Balance:
           </label>
           <div className='col-sm-10'>
-            <div
-              className='form-text text-muted'
-              style={{ fontSize: '0.75rem' }}
-            >
-              {balance} ETH
-            </div>
+            <div className='form-text text-muted'>{balance} ETH</div>
           </div>
         </div>
       )}
 
       <div className='input-group input-group-sm my-2 mb-4'>
-        <span className='text-primary input-group-text' id='chain'>
+        <span className='input-group-text' id='chain'>
           Action
         </span>
         <select
@@ -236,6 +222,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
         />
       )}
 
+      {/* Buttons */}
       <div className='text-center'>
         {step === 'request' && (
           <button
@@ -255,11 +242,15 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
             Relay Transaction
           </button>
         )}
-        <div className='table-responsive'>
-          <table className='table table-bordered table-dark text-center'>
+      </div>
+
+      {/* Gas Prices Table with added margin and smaller size */}
+      <div className='text-center mt-4 d-flex justify-content-center'>
+        <div className='table-responsive' style={{ maxWidth: '400px' }}>
+          <table className='table table-bordered table-dark text-center w-auto'>
             <caption className='caption-top text-center text-bg-warning'>
               Sepolia Gas Prices
-            </caption>{' '}
+            </caption>
             <thead>
               <tr>
                 <th scope='col'>Price</th>
