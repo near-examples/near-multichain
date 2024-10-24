@@ -24,11 +24,11 @@ function App() {
     <NearContext.Provider value={{ wallet, signedAccountId }}>
       <Navbar />
       <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-100'>
-        <h3 className='text-center'> NEAR Multi-Chain Demo</h3>
+        <h2 className='text-center text-white'> NEAR Multi-Chain Demo</h2>
         <figure>
           <blockquote className='blockquote'>
             <p className='mb-0'>
-              Securely manage countless accounts across multiple blockchains with a single NEAR account.
+              Securely manage countless accounts across multiple blockchains using a single NEAR account.
             </p>
           </blockquote>
           <figcaption className='blockquote-footer text-center'>

@@ -27,7 +27,7 @@ export const TransferForm = forwardRef(
     return (
       <>
         <div className='row mb-3'>
-          <label className='col-sm-2 col-form-label text-center'>To:</label>
+          <label className='col-sm-2 col-form-label text-end'>To:</label>
           <div className='col-sm-10'>
             <input
               type='text'
@@ -41,7 +41,7 @@ export const TransferForm = forwardRef(
         <div className='row mb-3'>
           <div>
             <div className='row mb-3'>
-              <label className='col-sm-2 col-form-label text-center'>Amount:</label>
+              <label className='col-sm-2 col-form-label text-end'>Amount:</label>
               <div className='col-sm-10'>
                 <div className='input-group'>
                   <input
