@@ -41,10 +41,11 @@ function App() {
         </p>
 
         {signedAccountId && (
-          <div style={{ width: '50%', minWidth: '400px' }}>
+          <div className='card mb-1' style={{ width: '50%', minWidth: '400px' }}>
+            <div className='card-body'>
             <div className='input-group input-group-sm mt-3 mb-3'>
               <span className='input-group-text' id='chain'>
-                Chain Signatures Contract ID
+                MPC Contract ID
               </span>
               <input
                 className='form-control text-center bg-dark text-light'
@@ -56,10 +57,10 @@ function App() {
 
             <div className='input-group input-group-sm my-2 mb-4'>
               <span className='input-group-text' id='chain'>
-                Chain
+                Destination Chain
               </span>
               <select
-                className='form-select bg-dark text-light'
+                className='form-select bg-dark text-light text-center'
                 aria-describedby='chain'
                 value={chain}
                 onChange={(e) => setChain(e.target.value)}
@@ -76,9 +77,23 @@ function App() {
               <BitcoinView props={{ setStatus, MPC_CONTRACT }} />
             )}
           </div>
+          </div>
         )}
 
         <div className='mt-3 small text-center text-warning'>{status}</div>
+
+        <div className='alert alert-dismissible alert-info'>
+          <h4 className='alert-heading'>⚠️ Heads Up!</h4>
+          <ul className='mb-0'>
+            <li>Minimum deposit is used.</li>
+            <li>MPC congestion may cause transaction failure.</li>
+            <li>
+              <a href='#' className='alert-link'>
+                See documentation for details.
+              </a>
+            </li>
+          </ul>
+        </div>
 
         <div
           style={{
@@ -88,10 +103,7 @@ function App() {
             borderRadius: '5px',
             fontSize: '15px',
           }}
-        >
-          ⚠️ Warning: Minimum deposit is used. MPC congestion may cause
-          transaction failure. See documentation for details.
-        </div>
+        ></div>
       </div>
     </NearContext.Provider>
   );

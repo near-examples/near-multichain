@@ -163,24 +163,26 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     <>
       {/* Form Inputs */}
       <div className='row mb-3'>
-        <label className='col-sm-2 col-form-label col-form-label-sm'>
-          Path:
-        </label>
-        <div className='col-sm-10'>
-          <input
-            type='text'
-            className='form-control form-control-sm'
-            value={derivation}
-            onChange={(e) => setDerivation(e.target.value)}
-            disabled={loading}
-          />
-        </div>
+        <label className='col-sm-2 col-form-label'></label>
+        <div className='col-sm-10'></div>
       </div>
+
+      <div className='input-group input-group-sm my-2 mb-4'>
+        <span className='input-group-text bg-info text-white' id='chain'>
+          PATH
+        </span>
+        <input
+          type='text'
+          className='form-control form-control-sm'
+          value={derivation}
+          onChange={(e) => setDerivation(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+
       <div className='row mb-0'>
-        <label className='col-sm-2 col-form-label col-form-label-sm'>
-          Address:
-        </label>
-        <div className='col-sm-10'>
+        <label className='col-sm-2 col-form-label'>Address:</label>
+        <div className='col-sm-10 fs-5'>
           <div className='form-text' id='eth-sender'>
             {senderLabel}
           </div>
@@ -189,18 +191,16 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
       {balance && (
         <div className='row mb-0'>
-          <label className='col-sm-2 col-form-label col-form-label-sm'>
-            Balance:
-          </label>
-          <div className='col-sm-10'>
+          <label className='col-sm-2 col-form-label'>Balance:</label>
+          <div className='col-sm-10 fs-5'>
             <div className='form-text text-muted'>{balance} ETH</div>
           </div>
         </div>
       )}
 
       <div className='input-group input-group-sm my-2 mb-4'>
-        <span className='input-group-text' id='chain'>
-          Action
+        <span className='input-group-text bg-success text-white' id='chain'>
+          ACTION
         </span>
         <select
           className='form-select'
@@ -222,11 +222,38 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
         />
       )}
 
-      {/* Buttons */}
-      <div className='text-center'>
+   
+      {/* <div className='text-center mt-4 d-flex justify-content-center'>
+        <div className='table-responsive' style={{ maxWidth: '400px' }}>
+          <table className='table table-bordered table-dark text-center w-auto'>
+            <caption className='caption-top text-center text-bg-warning'>
+              Sepolia Gas Prices
+            </caption>
+            <thead>
+              <tr>
+                <th scope='col'>Price</th>
+                <th scope='col'>Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{sepoliaGasPrice[1]}</td> 
+                <td>GWEI</td>
+              </tr>
+              <tr>
+                <td>{sepoliaGasPrice[0]}</td> 
+                <td>ETH</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div> */}
+
+      {/* Execute Buttons */}
+      <div className='d-grid gap-2'>
         {step === 'request' && (
           <button
-            className='btn btn-primary text-center'
+            className='btn btn-outline-primary text-center btn-lg'
             onClick={UIChainSignature}
             disabled={loading}
           >
@@ -242,33 +269,6 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
             Relay Transaction
           </button>
         )}
-      </div>
-
-      {/* Gas Prices Table with added margin and smaller size */}
-      <div className='text-center mt-4 d-flex justify-content-center'>
-        <div className='table-responsive' style={{ maxWidth: '400px' }}>
-          <table className='table table-bordered table-dark text-center w-auto'>
-            <caption className='caption-top text-center text-bg-warning'>
-              Sepolia Gas Prices
-            </caption>
-            <thead>
-              <tr>
-                <th scope='col'>Price</th>
-                <th scope='col'>Unit</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{sepoliaGasPrice[1]}</td> {/* Gas Price in GWEI */}
-                <td>GWEI</td>
-              </tr>
-              <tr>
-                <td>{sepoliaGasPrice[0]}</td> {/* Transaction Cost in ETH */}
-                <td>ETH</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     </>
   );

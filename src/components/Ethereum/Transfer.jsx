@@ -27,13 +27,11 @@ export const TransferForm = forwardRef(
     return (
       <>
         <div className='row mb-3'>
-          <label className='col-sm-2 col-form-label col-form-label-sm'>
-            To:
-          </label>
+          <label className='col-sm-2 col-form-label text-center'>To:</label>
           <div className='col-sm-10'>
             <input
               type='text'
-              className='form-control form-control-sm'
+              className='form-control'
               value={receiver}
               onChange={(e) => setReceiver(e.target.value)}
               disabled={loading}
@@ -43,20 +41,18 @@ export const TransferForm = forwardRef(
         <div className='row mb-3'>
           <div>
             <div className='row mb-3'>
-              <label className='col-sm-2 col-form-label col-form-label-sm'>
-                Amount:
-              </label>
+              <label className='col-sm-2 col-form-label text-center'>Amount:</label>
               <div className='col-sm-10'>
                 <div className='input-group'>
                   <input
                     type='number'
-                    className='form-control form-control-sm'
+                    className='form-control'
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     step='0.01'
                     disabled={loading}
                   />
-                  <span className='input-group-text'>ETH</span>
+                  <span className='input-group-text bg-warning text-white'>ETH</span>
                 </div>
               </div>
             </div>
