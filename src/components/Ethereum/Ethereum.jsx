@@ -188,15 +188,18 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
           </div>
         </div>
       </div>
-
-      {balance && (
-        <div className='row mb-0'>
-          <label className='col-sm-2 col-form-label text-end'>Balance:</label>
-          <div className='col-sm-10 fs-5'>
-            <div className='form-text text-muted '>{balance} <span className='text-warning'>ETH</span> </div> 
+      <div className='row mb-0'>
+        <label className='col-sm-2 col-form-label text-end'>Balance:</label>
+        <div className='col-sm-10 fs-5'>
+          <div className='form-text text-muted '>
+            {balance ? (
+              `${balance} ETH`
+            ) : (
+              <span className='text-warning'>Fetching balance...</span>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       <div className='input-group input-group-sm my-2 mb-4'>
         <span className='input-group-text bg-success text-white' id='chain'>
@@ -222,7 +225,6 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
         />
       )}
 
-   
       {/* <div className='text-center mt-4 d-flex justify-content-center'>
         <div className='table-responsive' style={{ maxWidth: '400px' }}>
           <table className='table table-bordered table-dark text-center w-auto'>
