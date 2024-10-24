@@ -1,13 +1,12 @@
-import { useState, useEffect, useContext } from "react";
-import { NearContext } from "../../context";
+import { useState, useEffect, useContext, useRef } from "react";
+import PropTypes from 'prop-types';
 
+import { NearContext } from "../../context";
 import { Ethereum } from "../../services/ethereum";
 import { useDebounce } from "../../hooks/debounce";
-import PropTypes from 'prop-types';
-import { useRef } from "react";
+import { getTransactionHashes } from '../../services/utils';
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { getTransactionHashes } from '../../services/utils';
 
 const Sepolia = 11155111;
 const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
