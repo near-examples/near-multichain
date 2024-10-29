@@ -25,7 +25,7 @@ function App() {
       <Navbar />
       <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-75'>
         <div className='alert alert-primary w-auto text-center'>
-         One account controls endless numbers of accounts across chains. 🚀
+         One account controlling endless number of accounts across chains. 🚀
           <br />
           <small className='text-muted'>
             Powered by 👉 {' '} 

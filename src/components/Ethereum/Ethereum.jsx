@@ -228,14 +228,14 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
         />
       )}
 
-      {/* <div className='text-center mt-4 d-flex justify-content-center'>
+      <div className='text-center mt-4 d-flex justify-content-center'>
         <div className='table-responsive' style={{ maxWidth: '400px' }}>
-          <table className='table table-bordered table-dark text-center w-auto'>
-            <caption className='caption-top text-center text-bg-warning'>
+          <table className='table table-hover text-center w-auto'>
+            <caption className='caption-top text-center'>
               Sepolia Gas Prices
             </caption>
             <thead>
-              <tr>
+              <tr className="table-primary">
                 <th scope='col'>Price</th>
                 <th scope='col'>Unit</th>
               </tr>
@@ -252,7 +252,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
             </tbody>
           </table>
         </div>
-      </div> */}
+      </div>
 
       {/* Execute Buttons */}
       <div className='d-grid gap-2'>
