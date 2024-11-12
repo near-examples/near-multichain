@@ -1,4 +1,4 @@
-name: Transfer New Issue to Docs Project
+name: Add Issue to DevRel Project Management
 
 on:
   issues:
@@ -17,7 +17,7 @@ jobs:
             const issueBody = context.payload.issue.body;
             const issueNumber = context.payload.issue.number;
             const organizationName = 'near';
-            const projectName = 'NEAR Docs';
+            const projectName = 'DevRel';
 
             // Fetch project ID and other necessary IDs
             const query = `
@@ -45,3 +45,4 @@ jobs:
             `;
 
             await github.graphql(mutation, { projectId: projectId, contentId: context.payload.issue.node_id });
+g
