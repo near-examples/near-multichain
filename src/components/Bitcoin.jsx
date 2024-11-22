@@ -13,7 +13,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
   const [receiver, setReceiver] = useState("tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5");
   const [amount, setAmount] = useState(1000);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(transactions ? "relay" : "request");
+  const [step, setStep] = useState(transactions.length ? "relay" : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("")
   const [senderPK, setSenderPK] = useState("")
@@ -23,11 +23,12 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
   
   const getSignedTx = async () => {
     const signedTx = await wallet.getTransactionResult(transactions[0])
+    console.log('signedTx', signedTx)
     setSignedTransaction(signedTx)
   }
 
   useEffect(() => {
-    getSignedTx()
+    if (transactions.length) getSignedTx()
   }, [transactions])
 
   useEffect(() => {
