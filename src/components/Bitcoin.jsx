@@ -5,22 +5,30 @@ import { Bitcoin as Bitcoin } from "../services/bitcoin";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
 
-const BTC_NETWORK = 'testnet';
-const BTC = new Bitcoin('https://blockstream.info/testnet/api', BTC_NETWORK);
+const BTC = Bitcoin;
 
-export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
+export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [receiver, setReceiver] = useState("tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5");
   const [amount, setAmount] = useState(1000);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("request");
+  const [step, setStep] = useState(transactions ? "relay" : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("")
   const [senderPK, setSenderPK] = useState("")
 
-  const [derivation, setDerivation] = useState("bitcoin-1");
+  const [derivation, setDerivation] = useState("bitcoin,1");
   const derivationPath = useDebounce(derivation, 500);
+  
+  const getSignedTx = async () => {
+    const signedTx = await wallet.getTransactionResult(transactions[0])
+    setSignedTransaction(signedTx)
+  }
+
+  useEffect(() => {
+    getSignedTx()
+  }, [transactions])
 
   useEffect(() => {
     setSenderAddress('Waiting for you to stop typing...')
@@ -37,22 +45,21 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
       setSenderAddress(address);
       setSenderPK(publicKey);
 
-      const balance = await BTC.getBalance(address);
+      const balance = await BTC.getBalance({ address });
       setStatus(`Your Bitcoin address is: ${address}, balance: ${balance} satoshi`);
     }
   }, [signedAccountId, derivationPath, setStatus]);
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
-    const payload = await BTC.createPayload(senderAddress, receiver, amount);
-
     setStatus('🕒 Asking MPC to sign the transaction, this might take a while...');
     try {
-      const signedTransaction = await BTC.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, senderPK);
+      const signedTransaction = await BTC.getSignature({ from: senderAddress, publicKey: senderPK, to: receiver, amount, path: derivationPath, wallet });
       setStatus('✅ Signed payload ready to be relayed to the Bitcoin network');
       setSignedTransaction(signedTransaction);
       setStep('relay');
     } catch (e) {
+      console.log(e)
       setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
     }
@@ -63,7 +70,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT } }) {
     setStatus('🔗 Relaying transaction to the Bitcoin network... this might take a while');
 
     try {
-      const txHash = await BTC.relayTransaction(signedTransaction);
+      const txHash = await BTC.broadcast({ from: senderAddress, publicKey: senderPK, to: receiver, amount, path: derivationPath, sig: signedTransaction });
       setStatus(
         <>
           <a href={`https://blockstream.info/testnet/tx/${txHash}`} target="_blank"> ✅ Successful </a>
