@@ -18,7 +18,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
   const [senderAddress, setSenderAddress] = useState("")
   const [senderPK, setSenderPK] = useState("")
 
-  const [derivation, setDerivation] = useState("bitcoin,1");
+  const [derivation, setDerivation] = useState("bitcoin-1");
   const derivationPath = useDebounce(derivation, 500);
   
   const getSignedTx = async () => {
