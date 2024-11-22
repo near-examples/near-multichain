@@ -45,10 +45,8 @@ export async function uncompressedHexPointToSegwitAddress(
   const ripemd160 = hash.ripemd160().update(Buffer.from(sha256HashOutput)).digest();
 
   const witnessVersion = 0x00; // for P2PWPKH
-  // @ts-ignore
   const words = bech32.toWords(Buffer.from(ripemd160));
   words.unshift(witnessVersion);
-  // @ts-ignore
   const address = bech32.encode(networkPrefix, words);
 
   return address;
@@ -89,7 +87,6 @@ export async function uncompressedHexPointToBtcAddress(
   const ripemd160 = hash.ripemd160().update(Buffer.from(sha256HashOutput)).digest();
 
   // Step 3: Adding network byte (0x00 for Bitcoin Mainnet, 0x6f for Testnet)
-  // @ts-ignore
   const networkByteAndRipemd160 = Buffer.concat([networkByte, Buffer.from(ripemd160)]);
 
   // Step 4: Base58Check encoding
