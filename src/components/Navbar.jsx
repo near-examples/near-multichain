@@ -1,26 +1,39 @@
-import { useContext } from "react";
-import { NearContext } from "../context";
-
-import logo from "/logo-black.svg";
+import { useContext } from 'react';
+import { NearContext } from '../context';
 
 const Navbar = () => {
   const { wallet, signedAccountId } = useContext(NearContext);
 
-  const signIn = () => { wallet.signIn() }
+  const signIn = () => {
+    wallet.signIn();
+  };
 
-  const signOut = () => { wallet.signOut() }
+  const signOut = () => {
+    wallet.signOut();
+  };
 
-  return (<nav className="navbar">
-    <div className="container-fluid navbar-expand-lg">
-      <a href="/"><img src={logo} alt="Near" height="40" className="d-inline-block align-text-top" /></a>
-      <div className='navbar-nav pt-1'>
-        {signedAccountId
-          ? <button className="btn btn-secondary" onClick={signOut}>Logout {signedAccountId}</button>
-          : <button className="btn btn-secondary" onClick={signIn}>Login</button>
-        }
+  return (
+    <nav className='navbar navbar-expand-lg bg-primary" data-bs-theme="light'>
+      <div className='container-fluid navbar-expand-lg text-center'>
+        <image src='https://near.org/wp-content/themes/near-19/assets/img/logo.svg' alt='NEAR Logo' />
+        <h1 className='text-center'>NEAR Multi-Chain Demo</h1>
+        <div className='navbar-nav pt-1'>
+          {signedAccountId ? (
+            <div className='d-flex flex-column align-items-center'>
+              <button className='btn btn-outline-danger' onClick={signOut}>
+                Logout
+              </button>
+              <small className='text-black-50'>{signedAccountId}</small>
+            </div>
+          ) : (
+            <button className='btn btn-outline-primary' onClick={signIn}>
+              Login
+            </button>
+          )}
+        </div>
       </div>
-    </div>
-  </nav>)
-}
+    </nav>
+  );
+};
 
-export default Navbar
+export default Navbar;
