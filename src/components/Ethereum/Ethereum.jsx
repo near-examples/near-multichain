@@ -168,7 +168,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       </div>
 
       <div className='input-group input-group-sm my-2 mb-2'>
-        <span className='input-group-text bg-info text-white' id='chain'>
+        <span className='input-group-text bg-primary text-white' id='chain'>
           PATH
         </span>
         <input
@@ -205,7 +205,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       </div>
 
       <div className='input-group input-group-sm my-2 mb-4'>
-        <span className='input-group-text bg-success text-white' id='chain'>
+        <span className='input-group-text bg-info text-white' id='chain'>
           ACTION
         </span>
         <select
@@ -229,13 +229,13 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       )}
 
       <div className='text-center mt-4 d-flex justify-content-center'>
-        <div className='table-responsive' style={{ maxWidth: '400px' }}>
+        <div className='table-responsive ' style={{ maxWidth: '400px' }}>
           <table className='table table-hover text-center w-auto'>
             <caption className='caption-top text-center'>
               Sepolia Gas Prices
             </caption>
             <thead>
-              <tr className="table-primary">
+              <tr className="table-light">
                 <th scope='col'>Price</th>
                 <th scope='col'>Unit</th>
               </tr>
@@ -258,7 +258,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       <div className='d-grid gap-2'>
         {step === 'request' && (
           <button
-            className='btn btn-outline-primary text-center btn-lg'
+            className='btn btn-outline-success text-center btn-lg'
             onClick={UIChainSignature}
             disabled={loading}
           >

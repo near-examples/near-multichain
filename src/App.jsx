@@ -24,16 +24,16 @@ function App() {
     <NearContext.Provider value={{ wallet, signedAccountId }}>
       <Navbar />
       <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-75'>
-        <div className='alert alert-primary w-auto text-center'>
+        <div className='alert alert-light w-auto text-center'>
          One account controlling endless number of accounts across chains. 🚀
           <br />
           <small className='text-muted'>
             Powered by 👉 {' '} 
             <a
               href='https://docs.near.org/concepts/abstraction/chain-signatures'
-              className='text-info'
+              className='text-primary'
             >
-              <b className=''>Chain Signatures</b>
+              <b className='text-info'>Chain Signatures</b>
             </a>
           </small>
         </div>
@@ -43,13 +43,13 @@ function App() {
             <div className='card-body'>
               <div className='input-group input-group-sm mt-3 mb-3'>
                 <span
-                  className='input-group-text bg-light text-black'
+                  className='input-group-text bg-primary text-white'
                   id='chain'
                 >
                   MPC Contract ID
                 </span>
                 <input
-                  className='form-control text-center bg-dark text-light'
+                  className='form-control text-center'
                   type='text'
                   value={`${MPC_CONTRACT}`}
                   disabled
@@ -58,13 +58,13 @@ function App() {
 
               <div className='input-group input-group-sm my-2 mb-4'>
                 <span
-                  className='input-group-text bg-light text-black'
+                  className='input-group-text bg-primary text-white'
                   id='chain'
                 >
                   Destination Chain
                 </span>
                 <select
-                  className='form-select bg-dark text-light text-center'
+                  className='form-select text-center'
                   aria-describedby='chain'
                   value={chain}
                   onChange={(e) => setChain(e.target.value)}
