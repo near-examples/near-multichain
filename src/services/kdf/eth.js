@@ -1,13 +1,17 @@
 import { base_decode } from 'near-api-js/lib/utils/serialize';
 import { ec as EC } from 'elliptic';
 import { keccak256 } from "viem";import hash from 'hash.js';
-import bs58check from 'bs58check';
 import { sha3_256 } from 'js-sha3'
+import { MPC_KEY } from './mpc';
 
-const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
+export async function generateEthAddress({ accountId, derivation_path }) {
+  const publicKey = await deriveChildPublicKey(najPublicKeyStrToUncompressedHexPoint(), accountId, derivation_path);
+  const address = await uncompressedHexPointToEvmAddress(publicKey);
+  return { publicKey: Buffer.from(publicKey, 'hex'), address };
+}
 
 export function najPublicKeyStrToUncompressedHexPoint() {
-  const res = '04' + Buffer.from(base_decode(rootPublicKey.split(':')[1])).toString('hex');
+  const res = '04' + Buffer.from(base_decode(MPC_KEY.split(':')[1])).toString('hex');
   return res;
 }
 
@@ -42,33 +46,4 @@ export function uncompressedHexPointToEvmAddress(uncompressedHexPoint) {
 
   // Ethereum address is last 20 bytes of hash (40 characters), prefixed with 0x
   return ("0x" + addressHash.substring(addressHash.length - 40));
-}
-
-export async function uncompressedHexPointToBtcAddress(publicKeyHex, network) {
-  // Step 1: SHA-256 hashing of the public key
-  const publicKeyBytes = Uint8Array.from(Buffer.from(publicKeyHex, 'hex'));
-
-  const sha256HashOutput = await crypto.subtle.digest(
-    'SHA-256',
-    publicKeyBytes
-  );
-
-  // Step 2: RIPEMD-160 hashing on the result of SHA-256
-  const ripemd160 = hash
-    .ripemd160()
-    .update(Buffer.from(sha256HashOutput))
-    .digest();
-
-  // Step 3: Adding network byte (0x00 for Bitcoin Mainnet)
-  const network_byte = network === 'bitcoin' ? 0x00 : 0x6f;
-  const networkByte = Buffer.from([network_byte]);
-  const networkByteAndRipemd160 = Buffer.concat([
-    networkByte,
-    Buffer.from(ripemd160)
-  ]);
-
-  // Step 4: Base58Check encoding
-  const address = bs58check.encode(networkByteAndRipemd160);
-
-  return address;
 }

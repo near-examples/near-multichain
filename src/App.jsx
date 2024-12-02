@@ -5,9 +5,7 @@ import Navbar from "./components/Navbar"
 import { Wallet } from "./services/near-wallet";
 import { EthereumView } from "./components/Ethereum/Ethereum";
 import { BitcoinView } from "./components/Bitcoin";
-
-// CONSTANTS
-const MPC_CONTRACT = 'v1.signer-prod.testnet';
+import { MPC_CONTRACT } from './services/kdf/mpc';
 
 // NEAR WALLET
 const wallet = new Wallet({ network: 'testnet' });
@@ -47,8 +45,8 @@ function App() {
               </select>
             </div>
 
-            {chain === 'eth' && <EthereumView props={{ setStatus, MPC_CONTRACT, transactions }} />}
-            {chain === 'btc' && <BitcoinView props={{ setStatus, MPC_CONTRACT, transactions }} />}
+            {chain === 'eth' && <EthereumView props={{ setStatus, transactions }} />}
+            {chain === 'btc' && <BitcoinView props={{ setStatus, transactions }} />}
           </div>
         }
 
