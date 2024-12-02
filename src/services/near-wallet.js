@@ -129,35 +129,6 @@ export class Wallet {
   };
 
   /**
-   * Makes a call to the MPC contract, requesting a signature
-   * @param {Object} options - the options for the call
-   * @param {string} options.contractId - the contract's account id
-   * @param {Object} options.payload - the payload to sign
-   * @param {string} options.path - the derivation path
-   * @param {string} options.attachedDeposit - the amount of yoctoNEAR to deposit
-   * @returns {Promise<JSON.value>} - the result of the method call
-  **/
-  callMPC = async ({ contractId, payload, path, attachedDeposit = ONE_YOCTO }) => {
-    const args = {
-      request: {
-        payload,
-        path,
-        key_version: 0,
-      },
-    };
-
-    const result = await this.callMethod({
-      contractId,
-      method: 'sign',
-      args,
-      gas: '250000000000000', // 250 Tgas
-      deposit: attachedDeposit,
-    });
-
-    return result;
-  }
-
-  /**
    * Retrieves transaction result from the network
    * @param {string} txhash - the transaction hash
    * @returns {Promise<JSON.value>} - the result of the transaction

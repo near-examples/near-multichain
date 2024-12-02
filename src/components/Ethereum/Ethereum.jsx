@@ -35,8 +35,8 @@ export function EthereumView({ props: { setStatus, transactions } }) {
 
     async function signTransaction() {
       const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
-      console.log({ big_r, s, recovery_id });
       const signedTransaction = await Eth.reconstructSignedTXFromLocalSession(big_r, s, recovery_id, senderAddress);
+
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
       setStep('relay');
@@ -71,12 +71,15 @@ export function EthereumView({ props: { setStatus, transactions } }) {
     setStatus('🏗️ Creating transaction');
 
     const { transaction } = await childRef.current.createTransaction();
-    console.log({transaction});
+
     setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
     try {
-      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC(wallet, derivationPath, transaction, senderAddress);
-      const signedTransaction = await Eth.reconstructSignedTransaction(big_r, s, recovery_id, transaction, senderAddress);
-      console.log({signedTransaction});
+      // to reconstruct on reload
+      sessionStorage.setItem('derivation', derivationPath);
+
+      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC({ wallet, path: derivationPath, transaction });
+      const signedTransaction = await Eth.reconstructSignedTransaction(big_r, s, recovery_id, transaction);
+
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
       setStep('relay');

@@ -1,7 +1,7 @@
 import * as ethers from 'ethers';
 import { fetchJson } from './utils';
 import * as bitcoinJs from 'bitcoinjs-lib';
-import { generateBtcAddress, rootPublicKey } from './kdf/btc';
+import { generateBtcAddress } from './kdf/btc';
 import { MPC_CONTRACT } from './kdf/mpc';
 
 export class Bitcoin {
@@ -27,7 +27,6 @@ export class Bitcoin {
   getUtxos = async ({ address }) => {
     const bitcoinRpc = `https://blockstream.info/${this.networkId === 'testnet' ? 'testnet' : ''}/api`;
     try {
-      console.log(this.networkId, `${bitcoinRpc}/address/${address}/utxo`);
       const utxos = await fetchJson(`${bitcoinRpc}/address/${address}/utxo`);
       return utxos;
     } catch (e) { console.log('e', e) }
@@ -59,6 +58,7 @@ export class Bitcoin {
     psbt,
     utxos,
     publicKey,
+    attachedDeposit = 1,
   }) => {
     const keyPair = {
       publicKey: Buffer.from(publicKey, 'hex'),
@@ -73,7 +73,15 @@ export class Bitcoin {
         const payload = Object.values(ethers.getBytes(transactionHash));
 
         // Sign the payload using MPC
-        const { big_r, s } = await wallet.callMPC({ contractId: MPC_CONTRACT, payload, path });
+        const args = { request: { payload, path, key_version: 0, } };
+
+        const { big_r, s } = await wallet.callMethod({
+          contractId: MPC_CONTRACT,
+          method: 'sign',
+          args,
+          gas: '250000000000000', // 250 Tgas
+          deposit: attachedDeposit,
+        });
 
         // Reconstruct the signature
         const rHex = big_r.affine_point.slice(2); // Remove the "03" prefix

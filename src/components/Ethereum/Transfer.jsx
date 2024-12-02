@@ -10,7 +10,7 @@ export const TransferForm = forwardRef(({ props: { Eth, senderAddress, loading }
 
   useImperativeHandle(ref, () => ({
     async createTransaction() {
-      const { transaction } = await Eth.createTransaction(senderAddress, receiver, amount, undefined);
+      const { transaction } = await Eth.createTransaction({ sender: senderAddress, receiver, amount });
       return { transaction };
     },
     async afterRelay() { }

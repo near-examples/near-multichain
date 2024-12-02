@@ -4,7 +4,6 @@ import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { generateEthAddress } from './kdf/eth';
 import { Common } from '@ethereumjs/common'
 import { Contract, JsonRpcProvider } from "ethers";
-import { parseNearAmount } from "near-api-js/lib/utils/format";
 import { MPC_CONTRACT } from "./kdf/mpc";
 
 export class Ethereum {
@@ -25,7 +24,6 @@ export class Ethereum {
     const block = await this.web3.eth.getBlock("latest");
     const maxPriorityFeePerGas = await this.web3.eth.getMaxPriorityFeePerGas();
     const maxFeePerGas = block.baseFeePerGas * 2n + maxPriorityFeePerGas;
-    console.log({ maxFeePerGas, maxPriorityFeePerGas }); 
     return { maxFeePerGas, maxPriorityFeePerGas };
   }
 
@@ -46,7 +44,7 @@ export class Ethereum {
     return contract.interface.encodeFunctionData(methodName, args);
   }
 
-  async createTransaction(sender, receiver, amount, data) {
+  async createTransaction({ sender, receiver, amount, data = undefined }) {
     const common = new Common({ chain: this.chain_id });
 
     // Get the nonce & gas price
@@ -74,12 +72,17 @@ export class Ethereum {
     return { transaction };
   }
 
-  async requestSignatureToMPC(wallet, path, transaction) {
-    // Ask the MPC to sign the payload
-    sessionStorage.setItem('derivation', path);
-
+  async requestSignatureToMPC({ wallet, path, transaction, attachedDeposit = 1 }) {
     const payload = Array.from(transaction.getHashedMessageToSign());
-    const { big_r, s, recovery_id } = await wallet.callMPC({ contractId: MPC_CONTRACT, payload, path });
+
+    const { big_r, s, recovery_id } = await wallet.callMethod({
+      contractId: MPC_CONTRACT,
+      method: 'sign',
+      args: { request: { payload, path, key_version: 0 } },
+      gas: '250000000000000', // 250 Tgas
+      deposit: attachedDeposit,
+    });
+
     return { big_r, s, recovery_id };
   }
 

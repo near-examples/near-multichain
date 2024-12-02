@@ -62,7 +62,7 @@ export const FunctionCallForm = forwardRef(({ props: { Eth, senderAddress, loadi
   useImperativeHandle(ref, () => ({
     async createTransaction() {
       const data = Eth.createTransactionData(contract, abi, 'set', [number]);
-      const { transaction } = await Eth.createTransaction(senderAddress, contract, 0, data);
+      const { transaction } = await Eth.createTransaction({ sender: senderAddress, receiver: contract, amount: 0, data });
       return { transaction };
     },
 
