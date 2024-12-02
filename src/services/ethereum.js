@@ -108,7 +108,9 @@ export class Ethereum {
   // This code can be used to actually relay the transaction to the Ethereum network
   async broadcastTX(signedTransaction) {
     const serializedTx = bytesToHex(signedTransaction.serialize());
-    const relayed = await this.web3.eth.sendSignedTransaction(serializedTx);
-    return relayed.transactionHash
+    const relayed = this.web3.eth.sendSignedTransaction(serializedTx);
+    let txHash;
+    await relayed.on('transactionHash', (hash) => { txHash = hash });
+    return txHash;
   }
 }
