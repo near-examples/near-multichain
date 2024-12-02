@@ -1,17 +1,18 @@
 import { useState, useEffect, useContext } from "react";
 import { NearContext } from "../../context";
 
-import { Ethereum } from "../../services/ethereum";
 import { useDebounce } from "../../hooks/debounce";
 import PropTypes from 'prop-types';
 import { useRef } from "react";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
+import { Ethereum } from "../../services/ethereum";
+import { MPC_CONTRACT } from "../../services/kdf/mpc";
 
 const Sepolia = 11155111;
-const Eth = new Ethereum('https://rpc2.sepolia.org', Sepolia);
+const Eth = new Ethereum('https://sepolia.drpc.org', Sepolia);
 
-export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } }) {
+export function EthereumView({ props: { setStatus, transactions } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
   const [derivation, setDerivation] = useState(sessionStorage.getItem('derivation') || "ethereum-1");
   const derivationPath = useDebounce(derivation, 1200);
 
-  const [reloaded, setReloaded] = useState(transactions.length? true : false);
+  const [reloaded, setReloaded] = useState(transactions.length ? true : false);
 
   const childRef = useRef();
 
@@ -35,7 +36,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
     async function signTransaction() {
       const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
       console.log({ big_r, s, recovery_id });
-      const signedTransaction = await Eth.reconstructSignatureFromLocalSession(big_r, s, recovery_id, senderAddress);
+      const signedTransaction = await Eth.reconstructSignedTXFromLocalSession(big_r, s, recovery_id, senderAddress);
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
       setStep('relay');
@@ -55,7 +56,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
 
   useEffect(() => {
     setEthAddress()
-    console.log(derivationPath)
+
     async function setEthAddress() {
       const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
       setSenderAddress(address);
@@ -69,14 +70,13 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
 
-    const { transaction, payload } = await childRef.current.createPayload();
-    // const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount, undefined);
-
+    const { transaction } = await childRef.current.createTransaction();
+    console.log({transaction});
     setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
     try {
-      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC(wallet, MPC_CONTRACT, derivationPath, payload, transaction, senderAddress);
-      const signedTransaction = await Eth.reconstructSignature(big_r, s, recovery_id, transaction, senderAddress);
-
+      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC(wallet, derivationPath, transaction, senderAddress);
+      const signedTransaction = await Eth.reconstructSignedTransaction(big_r, s, recovery_id, transaction, senderAddress);
+      console.log({signedTransaction});
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
       setStep('relay');
@@ -89,9 +89,8 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
   async function relayTransaction() {
     setLoading(true);
     setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
-
     try {
-      const txHash = await Eth.relayTransaction(signedTransaction);
+      const txHash = await Eth.broadcastTX(signedTransaction);
       setStatus(
         <>
           <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank"> ✅ Successful </a>
@@ -142,7 +141,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
     </>
   )
 
-  function removeUrlParams () {
+  function removeUrlParams() {
     const url = new URL(window.location.href);
     url.searchParams.delete('transactionHashes');
     window.history.replaceState({}, document.title, url);
@@ -152,7 +151,6 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT, transactions } 
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    MPC_CONTRACT: PropTypes.string.isRequired,
     transactions: PropTypes.arrayOf(PropTypes.string).isRequired
   }).isRequired
 };

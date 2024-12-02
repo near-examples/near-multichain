@@ -1,13 +1,13 @@
 import { useState, useEffect, useContext } from "react";
 import { NearContext } from "../context";
 
-import { Bitcoin as Bitcoin } from "../services/bitcoin";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from 'prop-types';
+import { Bitcoin } from "../services/bitcoin";
 
-const BTC = Bitcoin;
+const BTC = new Bitcoin('testnet');
 
-export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }) {
+export function BitcoinView({ props: { setStatus, transactions } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [receiver, setReceiver] = useState("tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5");
@@ -20,7 +20,7 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
 
   const [derivation, setDerivation] = useState("bitcoin-1");
   const derivationPath = useDebounce(derivation, 500);
-  
+
   const getSignedTx = async () => {
     const signedTx = await wallet.getTransactionResult(transactions[0])
     console.log('signedTx', signedTx)
@@ -53,9 +53,13 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
 
   async function chainSignature() {
     setStatus('🏗️ Creating transaction');
+
+    const { psbt, utxos } = await BTC.createTransaction({ from: senderAddress, to: receiver, amount, path: derivationPath, wallet });
+
     setStatus('🕒 Asking MPC to sign the transaction, this might take a while...');
+    
     try {
-      const signedTransaction = await BTC.getSignature({ from: senderAddress, publicKey: senderPK, to: receiver, amount, path: derivationPath, wallet });
+      const signedTransaction = await BTC.requestSignatureToMPC({ psbt, utxos, publicKey: senderPK, path: derivationPath, wallet });
       setStatus('✅ Signed payload ready to be relayed to the Bitcoin network');
       setSignedTransaction(signedTransaction);
       setStep('relay');
@@ -71,10 +75,10 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
     setStatus('🔗 Relaying transaction to the Bitcoin network... this might take a while');
 
     try {
-      const txHash = await BTC.broadcast({ from: senderAddress, publicKey: senderPK, to: receiver, amount, path: derivationPath, sig: signedTransaction });
+      const txHash = await BTC.broadcastTX(signedTransaction);
       setStatus(
         <>
-          <a href={`https://blockstream.info/testnet/tx/${txHash}`} target="_blank"> ✅ Successful </a>
+          <a href={`https://blockstream.info/testnet/tx/${txHash}`} target="_blank"> ✅ Successfully Broadcasted </a>
         </>
       );
     } catch (e) {
@@ -125,6 +129,6 @@ export function BitcoinView({ props: { setStatus, MPC_CONTRACT, transactions } }
 BitcoinView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    MPC_CONTRACT: PropTypes.string.isRequired,
+    transactions: PropTypes.arrayOf(PropTypes.string).isRequired
   }).isRequired
 };

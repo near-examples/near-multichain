@@ -5,13 +5,13 @@ import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
 
 export const TransferForm = forwardRef(({ props: { Eth, senderAddress, loading } }, ref) => {
-  const [receiver, setReceiver] = useState("0xe0f3B7e68151E9306727104973752A415c2bcbEb");
+  const [receiver, setReceiver] = useState("0xb8A6a4eb89b27703E90ED18fDa1101c7aa02930D");
   const [amount, setAmount] = useState(0.005);
 
   useImperativeHandle(ref, () => ({
-    async createPayload() {
-      const { transaction, payload } = await Eth.createPayload(senderAddress, receiver, amount, undefined);
-      return { transaction, payload };
+    async createTransaction() {
+      const { transaction } = await Eth.createTransaction(senderAddress, receiver, amount, undefined);
+      return { transaction };
     },
     async afterRelay() { }
   }));
@@ -40,7 +40,7 @@ TransferForm.propTypes = {
     senderAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
     Eth: PropTypes.shape({
-      createPayload: PropTypes.func.isRequired
+      createTransaction: PropTypes.func.isRequired
     }).isRequired
   }).isRequired
 };

@@ -1,28 +1,147 @@
 import * as ethers from 'ethers';
-import * as bitcoin from "bitcoinjs-lib";
 import { fetchJson } from './utils';
-import { sign } from './near';
 import * as bitcoinJs from 'bitcoinjs-lib';
-import secp256k1 from 'secp256k1';
-import { generateBtcAddress, rootPublicKey } from './btcKdf';
+import { generateBtcAddress, rootPublicKey } from './kdf/btc';
+import { MPC_CONTRACT } from './kdf/mpc';
 
-const constructPsbt = async (
-  address,
-  to,
-  amount
-) => {
-  const networkId = 'testnet'
+export class Bitcoin {
+  name = 'Bitcoin';
+  currency = 'sats';
+
+  constructor(networkId) {
+    this.networkId = networkId;
+    this.name = `Bitcoin ${networkId === 'testnet' ? 'Testnet' : 'Mainnet'}`;
+    this.explorer = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}`;
+  }
+
+  deriveAddress = async (accountId, derivation_path) => {
+    const { address, publicKey } = await generateBtcAddress({
+      accountId,
+      path: derivation_path,
+      isTestnet: true,
+      addressType: 'segwit'
+    });
+    return { address, publicKey };
+  }
+
+  getUtxos = async ({ address }) => {
+    const bitcoinRpc = `https://blockstream.info/${this.networkId === 'testnet' ? 'testnet' : ''}/api`;
+    try {
+      console.log(this.networkId, `${bitcoinRpc}/address/${address}/utxo`);
+      const utxos = await fetchJson(`${bitcoinRpc}/address/${address}/utxo`);
+      return utxos;
+    } catch (e) { console.log('e', e) }
+  }
+
+  getBalance = async ({ address }) => {
+    const utxos = await this.getUtxos({ address });
+    let balance = utxos.reduce((acc, utxo) => acc + utxo.value, 0);
+    return balance;
+  }
+
+  createTransaction = async ({ from: address, to, amount }) => {
+    let utxos = await this.getUtxos({ address });
+    if (!utxos) return
+
+    // Use the utxo with the highest value
+    utxos.sort((a, b) => b.value - a.value);
+    utxos = [utxos[0]];
+
+    const psbt = await constructPsbt(address, utxos, to, amount, this.networkId)
+    if (!psbt) return
+
+    return { utxos, psbt };
+  }
+
+  requestSignatureToMPC = async ({
+    wallet,
+    path,
+    psbt,
+    utxos,
+    publicKey,
+  }) => {
+    const keyPair = {
+      publicKey: Buffer.from(publicKey, 'hex'),
+      sign: async (transactionHash) => {
+        const utxo = utxos[0]; // The UTXO being spent
+        const value = utxo.value; // The value in satoshis of the UTXO being spent
+
+        if (isNaN(value)) {
+          throw new Error(`Invalid value for UTXO at index ${transactionHash}: ${utxo.value}`);
+        }
+
+        const payload = Object.values(ethers.getBytes(transactionHash));
+
+        // Sign the payload using MPC
+        const { big_r, s } = await wallet.callMPC({ contractId: MPC_CONTRACT, payload, path });
+
+        // Reconstruct the signature
+        const rHex = big_r.affine_point.slice(2); // Remove the "03" prefix
+        let sHex = s.scalar;
+
+        // Pad s if necessary
+        if (sHex.length < 64) {
+          sHex = sHex.padStart(64, '0');
+        }
+
+        const rBuf = Buffer.from(rHex, 'hex');
+        const sBuf = Buffer.from(sHex, 'hex');
+
+        // Combine r and s
+        return Buffer.concat([rBuf, sBuf]);
+      },
+    };
+
+    // Sign each input manually
+    await Promise.all(
+      utxos.map(async (_, index) => {
+        try {
+          await psbt.signInputAsync(index, keyPair);
+          console.log(`Input ${index} signed successfully`);
+        } catch (e) {
+          console.warn(`Error signing input ${index}:`, e);
+        }
+      })
+    );
+
+    psbt.finalizeAllInputs(); // Finalize the PSBT
+
+    return psbt;  // Return the generated signature
+  }
+
+  broadcastTX = async (signedTransaction) => {
+    // broadcast tx
+    const bitcoinRpc = `https://blockstream.info/${this.networkId === 'testnet' ? 'testnet' : ''}/api`;
+    const res = await fetch(`https://corsproxy.io/?${bitcoinRpc}/tx`, {
+      method: 'POST',
+      body: signedTransaction.extractTransaction().toHex(),
+    });
+    if (res.status === 200) {
+      const hash = await res.text();
+      return hash
+    } else {
+      throw Error(res);
+    }
+  }
+}
+
+async function getFeeRate(networkId, blocks = 6) {
   const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
+  const rate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
+  return rate[blocks].toFixed(0);
+}
+
+async function constructPsbt(
+  address,
+  utxos,
+  to,
+  amount,
+  networkId,
+) {
 
   if (!address) return console.log('must provide a sending address');
-  
-  const { getBalance, explorer } = Bitcoin;
   const sats = parseInt(amount);
 
-  // Get UTXOs
-  const utxos = await getBalance({ address, getUtxos: true });
-  if (!utxos || utxos.length === 0) throw new Error('No utxos detected for address: ', address);
-  
   // Check balance (TODO include fee in check)
   if (utxos[0].value < sats) {
     return console.log('insufficient funds');
@@ -31,12 +150,12 @@ const constructPsbt = async (
   const psbt = new bitcoinJs.Psbt({ network: networkId === 'testnet' ? bitcoinJs.networks.testnet : bitcoinJs.networks.bitcoin });
 
   let totalInput = 0;
-  
+
   await Promise.all(
     utxos.map(async (utxo) => {
       totalInput += utxo.value;
 
-      const transaction = await fetchTransaction(utxo.txid);
+      const transaction = await fetchTransaction(networkId, utxo.txid);
       let inputOptions;
 
       const scriptHex = transaction.outs[utxo.vout].script.toString('hex');
@@ -86,7 +205,7 @@ const constructPsbt = async (
       psbt.addInput(inputOptions);
     })
   );
-  
+
   // Add output to the recipient
   psbt.addOutput({
     address: to,
@@ -94,9 +213,9 @@ const constructPsbt = async (
   });
 
   // Calculate fee (replace with real fee estimation)
-  const feeRate = await fetchJson(`${bitcoinRpc}/fee-estimates`);
+  const feeRate = await getFeeRate(networkId);
   const estimatedSize = utxos.length * 148 + 2 * 34 + 10;
-  const fee = estimatedSize * (feeRate[6] + 3);
+  const fee = (estimatedSize * feeRate).toFixed(0);
   const change = totalInput - sats - fee;
 
   // Add change output if necessary
@@ -107,221 +226,10 @@ const constructPsbt = async (
     });
   }
 
-  // Return the constructed PSBT and UTXOs for signing
-  return [utxos, psbt, explorer];
+  return psbt;
 };
 
-export const Bitcoin = {
-  name: 'Bitcoin Testnet',
-  currency: 'sats',
-  explorer: 'https://blockstream.info/testnet',
-  deriveAddress: async (accountId, derivation_path) => {
-    const { address, publicKey } = await generateBtcAddress({
-      publicKey: rootPublicKey,
-      accountId,
-      path: derivation_path,
-      isTestnet: true,
-      addressType: 'segwit'
-    });
-    return { address, publicKey };
-  },
-  getBalance: async ({ address, getUtxos = false }) => {
-    const networkId = 'testnet'
-    try {
-      const res = await fetchJson(
-        `https://blockstream.info${networkId === 'testnet' ? '/testnet': ''}/api/address/${address}/utxo`,
-      );
-
-      if (!res) return
-
-      let utxos = res.map((utxo) => ({
-        txid: utxo.txid,
-        vout: utxo.vout,
-        value: utxo.value,
-      }));
-
-      console.log('utxos', utxos)
-      let maxValue = 0;
-      utxos.forEach((utxo) => {
-        if (utxo.value > maxValue) maxValue = utxo.value;
-      });
-      utxos = utxos.filter((utxo) => utxo.value === maxValue);
-
-      if (!utxos || !utxos.length) {
-        console.log(
-          'no utxos for address',
-          address,
-          'please fund address and try again',
-        );
-      }
-
-      return getUtxos ? utxos : maxValue;
-    } catch (e) {
-      console.log('e', e)
-    }
-  },
-  getAndBroadcastSignature: async ({
-    from: address,
-    publicKey,
-    to,
-    amount,
-    path,
-  }) => {
-    console.log('About to call getSignature...');
-    const sig = await bitcoin.getSignature({
-      from: address,
-      publicKey,
-      to,
-      amount,
-      path,
-    });
-  
-    // Check if the signature was successfully generated
-    if (!sig) {
-      console.error('Failed to generate signature');
-      return;
-    }
-
-    const broadcastResult = await bitcoin.broadcast({
-      from: address,
-      publicKey: publicKey,
-      to,
-      amount,
-      path,
-      sig
-    });
-
-    return broadcastResult
-  },
-  getSignature: async ({
-    from: address,
-    publicKey,
-    to,
-    amount,
-    path,
-    wallet
-  }) => {
-    const result = await constructPsbt(address, to, amount)
-    if (!result) return
-    const [utxos, psbt] = result;
-
-    let signature
-    const keyPair = {
-      publicKey: Buffer.from(publicKey, 'hex'),
-      sign: async (transactionHash) => {
-        const utxo = utxos[0]; // The UTXO being spent
-        const value = utxo.value; // The value in satoshis of the UTXO being spent
-        
-        if (isNaN(value)) {
-          throw new Error(`Invalid value for UTXO at index ${transactionHash}: ${utxo.value}`);
-        }
-
-        const payload = Object.values(ethers.getBytes(transactionHash));
-  
-        // Sign the payload using the external `sign` method (e.g., NEAR signature)
-        signature = await sign(payload, path, wallet);
-      },
-    };
-
-    try {
-      // Sign each input manually
-      await Promise.all(
-        utxos.map(async (_, index) => {
-          try {
-            await psbt.signInputAsync(index, keyPair);
-            console.log(`Input ${index} signed successfully`);
-          } catch (e) {
-            console.warn(`Error signing input ${index}:`, e);
-          }
-        })
-      );
-    } catch (e) {
-      console.error('Error signing inputs:', e);
-    }
-
-    return signature;  // Return the generated signature
-  },
-  broadcast: async ({
-    from: address,
-    publicKey,
-    to,
-    amount,
-    sig
-  }) => {
-    const result = await constructPsbt(address, to, amount)
-    if (!result) return
-    const [utxos, psbt, explorer] = result;
-    
-    const keyPair = {
-      publicKey: Buffer.from(publicKey, 'hex'),
-      sign: () => {
-        const rHex = sig.big_r.affine_point.slice(2); // Remove the "03" prefix
-        let sHex = sig.s.scalar;
-
-        // Pad s if necessary
-        if (sHex.length < 64) {
-          sHex = sHex.padStart(64, '0');
-        }
-
-        const rBuf = Buffer.from(rHex, 'hex');
-        const sBuf = Buffer.from(sHex, 'hex');
-
-        // Combine r and s
-        const rawSignature = Buffer.concat([rBuf, sBuf]);
-
-        return rawSignature;
-      },
-    };
-
-    await Promise.all(
-      utxos.map(async (_, index) => {
-        console.log('utxo:', _)
-        try {
-          await psbt.signInputAsync(index, keyPair);
-        } catch (e) {
-          console.warn(e, 'not signed');
-        }
-      }),
-    );
-
-    try {
-      psbt.finalizeAllInputs();
-    } catch (e) {
-      console.log('e', e)
-    }
-  
-    // const networkId = useStore.getState().networkId
-    const networkId = 'testnet'
-    const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
-  
-    console.log('psbt', psbt.extractTransaction().toHex())
-    // broadcast tx
-    try {
-      const res = await fetch(`https://corsproxy.io/?${bitcoinRpc}/tx`, {
-        method: 'POST',
-        body: psbt.extractTransaction().toHex(),
-      });
-      if (res.status === 200) {
-        const hash = await res.text();
-        console.log('tx hash', hash);
-        console.log('explorer link', `${explorer}/tx/${hash}`);
-        console.log(
-          'NOTE: it might take a minute for transaction to be included in mempool',
-        );
-
-        return hash
-      } else {
-        return res
-      }
-    } catch (e) {
-      console.log('error broadcasting bitcoin tx', JSON.stringify(e));
-    }
-    return 'failed'
-  },
-};
-
-async function fetchTransaction(transactionId) {
-  const networkId = 'testnet'
+async function fetchTransaction(networkId, transactionId) {
   const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
 
   const data = await fetchJson(`${bitcoinRpc}/tx/${transactionId}`);
@@ -355,22 +263,4 @@ async function fetchTransaction(transactionId) {
   });
 
   return tx;
-}
-
-export const recoverPubkeyFromSignature = (transactionHash, rawSignature) => {
-  let pubkeys = [];
-  [0,1].forEach(num => {
-    const recoveredPubkey = secp256k1.recover(
-      transactionHash, // 32 byte hash of message
-      rawSignature, // 64 byte signature of message (not DER, 32 byte R and 32 byte S with 0x00 padding)
-      num, // number 1 or 0. This will usually be encoded in the base64 message signature
-      false, // true if you want result to be compressed (33 bytes), false if you want it uncompressed (65 bytes) this also is usually encoded in the base64 signature
-    );
-    console.log('recoveredPubkey', recoveredPubkey)
-    const buffer = Buffer.from(recoveredPubkey);
-    // Convert the Buffer to a hexadecimal string
-    const hexString = buffer.toString('hex');
-    pubkeys.push(hexString)
-  })
-  return pubkeys
 }

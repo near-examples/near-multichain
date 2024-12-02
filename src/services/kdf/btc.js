@@ -4,15 +4,9 @@ import { sha3_256 } from 'js-sha3';
 import hash from 'hash.js';
 import bs58check from 'bs58check';
 import { bech32 } from 'bech32'
+import { MPC_KEY } from './mpc';
 
 export const rootPublicKey = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
-
-export function najPublicKeyStrToUncompressedHexPoint(
-  najPublicKeyStr
-) {
-  const decodedKey = base_decode(najPublicKeyStr.split(':')[1]);
-  return '04' + Buffer.from(decodedKey).toString('hex');
-}
 
 export function najPublicKeyStrToCompressedPoint(najPublicKeyStr) {
   const ec = new EC('secp256k1');
@@ -94,14 +88,13 @@ export async function uncompressedHexPointToBtcAddress(
 }
 
 export async function generateBtcAddress({
-  publicKey,
   accountId,
   path = '',
   isTestnet = true,
   addressType = 'segwit'
 }) {
   const childPublicKey = await deriveChildPublicKey(
-    najPublicKeyStrToCompressedPoint(publicKey),  // Use the compressed key
+    najPublicKeyStrToCompressedPoint(MPC_KEY),  // Use the compressed key
     accountId,
     path
   );

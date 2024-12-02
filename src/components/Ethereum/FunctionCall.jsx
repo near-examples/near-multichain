@@ -60,15 +60,13 @@ export const FunctionCallForm = forwardRef(({ props: { Eth, senderAddress, loadi
   useEffect(() => { getNumber() }, []);
 
   useImperativeHandle(ref, () => ({
-    async createPayload() {
+    async createTransaction() {
       const data = Eth.createTransactionData(contract, abi, 'set', [number]);
-      const { transaction, payload } = await Eth.createPayload(senderAddress, contract, 0, data);
-      return { transaction, payload };
+      const { transaction } = await Eth.createTransaction(senderAddress, contract, 0, data);
+      return { transaction };
     },
 
-    async afterRelay() {
-      getNumber();
-    }
+    async afterRelay() { getNumber(); }
   }));
 
   return (
@@ -110,7 +108,7 @@ FunctionCallForm.propTypes = {
     senderAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
     Eth: PropTypes.shape({
-      createPayload: PropTypes.func.isRequired,
+      createTransaction: PropTypes.func.isRequired,
       createTransactionData: PropTypes.func.isRequired,
       getContractViewFunction: PropTypes.func.isRequired,
     }).isRequired,

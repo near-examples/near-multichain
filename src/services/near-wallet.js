@@ -13,6 +13,7 @@ import { setupBitteWallet } from '@near-wallet-selector/bitte-wallet';
 
 const THIRTY_TGAS = '30000000000000';
 const NO_DEPOSIT = '0';
+const ONE_YOCTO = '1';
 
 export class Wallet {
   /**
@@ -36,7 +37,7 @@ export class Wallet {
    */
   startUp = async (accountChangeHook) => {
     this.selector = setupWalletSelector({
-      network: {networkId: this.networkId, nodeUrl: 'https://rpc.testnet.pagoda.co'},
+      network: { networkId: this.networkId, nodeUrl: 'https://rpc.testnet.pagoda.co' },
       modules: [setupMyNearWallet(), setupHereWallet(), setupMeteorWallet(), setupBitteWallet()]
     });
 
@@ -126,6 +127,35 @@ export class Wallet {
 
     return providers.getTransactionLastResult(outcome);
   };
+
+  /**
+   * Makes a call to the MPC contract, requesting a signature
+   * @param {Object} options - the options for the call
+   * @param {string} options.contractId - the contract's account id
+   * @param {Object} options.payload - the payload to sign
+   * @param {string} options.path - the derivation path
+   * @param {string} options.attachedDeposit - the amount of yoctoNEAR to deposit
+   * @returns {Promise<JSON.value>} - the result of the method call
+  **/
+  callMPC = async ({ contractId, payload, path, attachedDeposit = ONE_YOCTO }) => {
+    const args = {
+      request: {
+        payload,
+        path,
+        key_version: 0,
+      },
+    };
+
+    const result = await this.callMethod({
+      contractId,
+      method: 'sign',
+      args,
+      gas: '250000000000000', // 250 Tgas
+      deposit: attachedDeposit,
+    });
+
+    return result;
+  }
 
   /**
    * Retrieves transaction result from the network
