@@ -4,9 +4,7 @@ import { Wallet } from './services/near-wallet';
 import Navbar from './components/Navbar';
 import { EthereumView } from './components/Ethereum/Ethereum';
 import { BitcoinView } from './components/Bitcoin';
-
-// CONSTANTS
-const MPC_CONTRACT = 'v1.signer-prod.testnet';
+import { MPC_CONTRACT } from './services/kdf/mpc';
 
 // NEAR WALLET CONNECTION
 const wallet = new Wallet({ network: 'testnet' });

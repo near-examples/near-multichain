@@ -13,6 +13,7 @@ import { setupBitteWallet } from '@near-wallet-selector/bitte-wallet';
 
 const THIRTY_TGAS = '30000000000000';
 const NO_DEPOSIT = '0';
+const ONE_YOCTO = '1';
 
 export class Wallet {
   /**
@@ -36,7 +37,7 @@ export class Wallet {
    */
   startUp = async (accountChangeHook) => {
     this.selector = setupWalletSelector({
-      network: {networkId: this.networkId, nodeUrl: 'https://rpc.testnet.pagoda.co'},
+      network: { networkId: this.networkId, nodeUrl: 'https://rpc.testnet.pagoda.co' },
       modules: [setupMyNearWallet(), setupHereWallet(), setupMeteorWallet(), setupBitteWallet()]
     });
 
