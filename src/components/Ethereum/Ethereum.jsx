@@ -10,7 +10,6 @@ import { FunctionCallForm } from "./FunctionCall";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum("https://sepolia.drpc.org", Sepolia);
-const sepoliaGasPrice = await Eth.fetchSepoliaGasPrice();
 
 const transactions = getTransactionHashes();
 
@@ -27,10 +26,47 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   const [derivation, setDerivation] = useState(
     sessionStorage.getItem("derivation") || "ethereum-1"
   );
-  const [reloaded, setReloaded] = useState(!!getTransactionHashes().length);
+  const [reloaded, setReloaded] = useState(transactions.length);
+
+  const [gasPriceInGwei, setGasPriceInGwei] = useState("");
+  const [txCost, setTxCost] = useState("");
 
   const derivationPath = useDebounce(derivation, 1200);
   const childRef = useRef();
+
+  useEffect(() => {
+    async function fetchEthereumGasPrice() {
+      try {
+        // Fetch gas price in Wei
+        const gasPriceInWei = await Eth.web3.eth.getGasPrice();
+
+        // Convert gas price from Wei to Gwei
+        const gasPriceInGwei = Eth.web3.utils.fromWei(gasPriceInWei, "gwei");
+
+        // Gas limit for a standard ETH transfer
+        const gasLimit = 21000;
+
+        // Calculate transaction cost in ETH (gwei * gasLimit) / 1e9
+        const txCost = (gasPriceInGwei * gasLimit) / 1000000000;
+
+        // Format both gas price and transaction cost to 7 decimal places
+        const formattedGasPriceInGwei = parseFloat(gasPriceInGwei).toFixed(7);
+        const formattedTxCost = parseFloat(txCost).toFixed(7);
+
+        console.log(
+          `Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`
+        );
+        console.log(`Estimated Transaction Cost: ${formattedTxCost} ETH`);
+
+        setTxCost(formattedTxCost);
+        setGasPriceInGwei(formattedGasPriceInGwei);
+      } catch (error) {
+        console.error("Error fetching gas price:", error);
+      }
+    }
+
+    fetchEthereumGasPrice();
+  }, []);
 
   // Handle signing transaction when the page is reloaded and senderAddress is set
   useEffect(() => {
@@ -242,11 +278,11 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
             </thead>
             <tbody>
               <tr>
-                <td>{sepoliaGasPrice[1]}</td>
+                <td>{gasPriceInGwei}</td>
                 <td>GWEI</td>
               </tr>
               <tr>
-                <td>{sepoliaGasPrice[0]}</td>
+                <td>{txCost}</td>
                 <td>ETH</td>
               </tr>
             </tbody>
