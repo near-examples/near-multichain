@@ -27,14 +27,19 @@ export function BitcoinView({ props: { setStatus } }) {
   const derivationPath = useDebounce(derivation, 500);
 
   const getSignedTx = async () => {
-    const signedTx = await wallet.getTransactionResult(transactions[0]);
-    console.log("signedTx", signedTx);
-    setSignedTransaction(signedTx);
+    const signature = await wallet.getTransactionResult(transactions[0]);
+
+    const signedTransaction = await BTC.reconstructSignedTransactionFromSessionStorage(signature);
+
+    setSignedTransaction(signedTransaction);
+    removeUrlParams();
   };
 
   useEffect(() => {
-    if (transactions.length) getSignedTx();
-  }, [transactions]);
+    if (transactions.length === 0) return;
+    
+    getSignedTx();
+  }, []);
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
@@ -72,6 +77,17 @@ export function BitcoinView({ props: { setStatus } }) {
       wallet,
     });
 
+    sessionStorage.setItem(
+      "btc_transaction",
+      JSON.stringify({
+        from: senderAddress,
+        to: receiver,
+        amount,
+        utxos,
+        publicKey: senderPK
+      })
+    );
+
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while..."
     );
@@ -84,7 +100,6 @@ export function BitcoinView({ props: { setStatus } }) {
         path: derivationPath,
         wallet,
       });
-      console.log('signedTransaction', signedTransaction);
       setStatus("✅ Signed payload ready to be relayed to the Bitcoin network");
       setSignedTransaction(signedTransaction);
       setStep("relay");
@@ -127,6 +142,12 @@ export function BitcoinView({ props: { setStatus } }) {
     await chainSignature();
     setLoading(false);
   };
+
+  function removeUrlParams() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("transactionHashes");
+    window.history.replaceState({}, document.title, url);
+  }
 
   return (
     <>
