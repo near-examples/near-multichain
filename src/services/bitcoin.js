@@ -120,7 +120,7 @@ export class Bitcoin {
   broadcastTX = async (signedTransaction) => {
     // broadcast tx
     const bitcoinRpc = `https://blockstream.info/${this.networkId === 'testnet' ? 'testnet' : ''}/api`;
-    const res = await fetch(`https://corsproxy.io/?${bitcoinRpc}/tx`, {
+    const res = await fetch(`${bitcoinRpc}/tx`, {
       method: 'POST',
       body: signedTransaction.extractTransaction().toHex(),
     });
