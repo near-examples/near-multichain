@@ -1,4 +1,4 @@
-import { Web3 } from "web3"
+import { Web3 } from 'web3';
 import { bytesToHex } from '@ethereumjs/util';
 import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
 import { generateEthAddress } from './kdf/eth';
@@ -29,7 +29,7 @@ export class Ethereum {
 
   async getBalance(accountId) {
     const balance = await this.web3.eth.getBalance(accountId);
-    return this.web3.utils.fromWei(balance, "ether");
+    return this.web3.utils.fromWei(balance, 'ether');
   }
 
   async getContractViewFunction(receiver, abi, methodName, args = []) {
@@ -59,7 +59,7 @@ export class Ethereum {
       maxPriorityFeePerGas,
       to: receiver,
       data: data,
-      value: BigInt(this.web3.utils.toWei(amount, "ether")),
+      value: BigInt(this.web3.utils.toWei(amount, 'ether')),
       chain: this.chain_id,
     };
 
@@ -112,5 +112,32 @@ export class Ethereum {
     let txHash;
     await relayed.on('transactionHash', (hash) => { txHash = hash });
     return txHash;
+  }
+
+  async fetchSepoliaGasPrice() {
+    try {
+      // Fetch gas price in Wei
+      const gasPriceInWei = await this.web3.eth.getGasPrice();
+
+      // Convert gas price from Wei to Gwei
+      const gasPriceInGwei = this.web3.utils.fromWei(gasPriceInWei, 'gwei');
+
+      // Gas limit for a standard ETH transfer
+      const gasLimit = 21000;
+
+      // Calculate transaction cost in ETH (gwei * gasLimit) / 1e9
+      const txCost = (gasPriceInGwei * gasLimit) / 1000000000;
+
+      // Format both gas price and transaction cost to 7 decimal places
+      const formattedGasPriceInGwei = parseFloat(gasPriceInGwei).toFixed(7);
+      const formattedTxCost = parseFloat(txCost).toFixed(7);
+
+      console.log(`Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`);
+      console.log(`Estimated Transaction Cost: ${formattedTxCost} ETH`);
+
+      return [formattedTxCost, formattedGasPriceInGwei];
+    } catch (error) {
+      console.error('Error fetching gas price:', error);
+    }
   }
 }
