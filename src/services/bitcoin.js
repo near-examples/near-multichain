@@ -117,6 +117,75 @@ export class Bitcoin {
     return psbt;  // Return the generated signature
   }
 
+  reconstructSignedTransaction = async ({
+    psbt,
+    utxos,
+    publicKey,
+    signature,
+  }) => {
+    const keyPair = {
+      publicKey: Buffer.from(publicKey, "hex"),
+      sign: async (transactionHash) => {
+        const utxo = utxos[0]; // The UTXO being spent
+        const value = utxo.value; // The value in satoshis of the UTXO being spent
+
+        if (isNaN(value)) {
+          throw new Error(
+            `Invalid value for UTXO at index ${transactionHash}: ${utxo.value}`
+          );
+        }
+
+        const { big_r, s } = signature;
+
+        // Reconstruct the signature
+        const rHex = big_r.affine_point.slice(2); // Remove the "03" prefix
+        let sHex = s.scalar;
+
+        // Pad s if necessary
+        if (sHex.length < 64) {
+          sHex = sHex.padStart(64, "0");
+        }
+
+        const rBuf = Buffer.from(rHex, "hex");
+        const sBuf = Buffer.from(sHex, "hex");
+
+        // Combine r and s
+        return Buffer.concat([rBuf, sBuf]);
+      },
+    };
+
+    // Sign each input manually
+    await Promise.all(
+      utxos.map(async (_, index) => {
+        try {
+          await psbt.signInputAsync(index, keyPair);
+          console.log(`Input ${index} signed successfully`);
+        } catch (e) {
+          console.warn(`Error signing input ${index}:`, e);
+        }
+      })
+    );
+
+    psbt.finalizeAllInputs(); // Finalize the PSBT
+
+    return psbt; // Return the generated signature
+  };
+
+  reconstructSignedTransactionFromSessionStorage = async (signature) => {
+    const { from, to, amount, utxos, publicKey } = JSON.parse(
+      sessionStorage.getItem("btc_transaction")
+    );
+
+    const psbt = await constructPsbt(from, utxos, to, amount, this.networkId);
+
+    return this.reconstructSignedTransaction({
+      psbt,
+      utxos,
+      signature,
+      publicKey,
+    });
+  };
+
   broadcastTX = async (signedTransaction) => {
     // broadcast tx
     const bitcoinRpc = `https://blockstream.info/${this.networkId === 'testnet' ? 'testnet' : ''}/api`;
