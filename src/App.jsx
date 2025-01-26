@@ -3,7 +3,8 @@ import { NearContext } from './context';
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar"
 import { Wallet } from "./services/near-wallet";
-import { EthereumView } from "./components/Ethereum/Ethereum";
+import { EthereumView } from "./components/EVM/Ethereum";
+import { BaseView } from "./components/EVM/Base";
 import { BitcoinView } from "./components/Bitcoin";
 import { MPC_CONTRACT } from './services/kdf/mpc';
 
@@ -41,11 +42,13 @@ function App() {
               <span className="text-primary input-group-text" id="chain">Chain</span>
               <select className="form-select" aria-describedby="chain" value={chain} onChange={e => setChain(e.target.value)} >
                 <option value="eth"> Ξ Ethereum </option>
+                <option value="base"> Ξ Base </option>
                 <option value="btc"> ₿ BTC </option>
               </select>
             </div>
 
             {chain === 'eth' && <EthereumView props={{ setStatus, transactions }} />}
+            {chain === 'base' && <BaseView props={{ setStatus, transactions }} />}
             {chain === 'btc' && <BitcoinView props={{ setStatus, transactions }} />}
           </div>
         }

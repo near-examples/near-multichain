@@ -6,11 +6,12 @@ import PropTypes from 'prop-types';
 import { useRef } from "react";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { Ethereum } from "../../services/ethereum";
+import { EthereumVM } from "../../services/evm";
 import { MPC_CONTRACT } from "../../services/kdf/mpc";
 
-const Sepolia = 11155111;
-const Eth = new Ethereum('https://sepolia.drpc.org', Sepolia);
+const Evm = new EthereumVM('https://sepolia.drpc.org');
+
+const contractAddress = "0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3";
 
 export function EthereumView({ props: { setStatus, transactions } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
@@ -35,7 +36,7 @@ export function EthereumView({ props: { setStatus, transactions } }) {
 
     async function signTransaction() {
       const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
-      const signedTransaction = await Eth.reconstructSignedTXFromLocalSession(big_r, s, recovery_id, senderAddress);
+      const signedTransaction = await Evm.reconstructSignedTXFromLocalSession(big_r, s, recovery_id, senderAddress);
 
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
@@ -58,11 +59,11 @@ export function EthereumView({ props: { setStatus, transactions } }) {
     setEthAddress()
 
     async function setEthAddress() {
-      const { address } = await Eth.deriveAddress(signedAccountId, derivationPath);
+      const { address } = await Evm.deriveAddress(signedAccountId, derivationPath);
       setSenderAddress(address);
       setSenderLabel(address);
 
-      const balance = await Eth.getBalance(address);
+      const balance = await Evm.getBalance(address);
       if (!reloaded) setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
     }
   }, [derivationPath]);
@@ -77,8 +78,8 @@ export function EthereumView({ props: { setStatus, transactions } }) {
       // to reconstruct on reload
       sessionStorage.setItem('derivation', derivationPath);
 
-      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC({ wallet, path: derivationPath, transaction });
-      const signedTransaction = await Eth.reconstructSignedTransaction(big_r, s, recovery_id, transaction);
+      const { big_r, s, recovery_id } = await Evm.requestSignatureToMPC({ wallet, path: derivationPath, transaction });
+      const signedTransaction = await Evm.reconstructSignedTransaction(big_r, s, recovery_id, transaction);
 
       setSignedTransaction(signedTransaction);
       setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
@@ -93,7 +94,7 @@ export function EthereumView({ props: { setStatus, transactions } }) {
     setLoading(true);
     setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
     try {
-      const txHash = await Eth.broadcastTX(signedTransaction);
+      const txHash = await Evm.broadcastTX(signedTransaction);
       setStatus(
         <>
           <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank"> ✅ Successful </a>
@@ -133,8 +134,8 @@ export function EthereumView({ props: { setStatus, transactions } }) {
 
       {
         action === 'transfer'
-          ? <TransferForm ref={childRef} props={{ Eth, senderAddress, loading }} />
-          : <FunctionCallForm ref={childRef} props={{ Eth, senderAddress, loading }} />
+          ? <TransferForm ref={childRef} props={{ Evm, senderAddress, loading }} />
+          : <FunctionCallForm ref={childRef} props={{ Evm, contractAddress, senderAddress, loading }} />
       }
 
       <div className="text-center">

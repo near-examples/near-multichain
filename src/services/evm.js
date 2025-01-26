@@ -1,22 +1,23 @@
-import { Web3 } from "web3"
-import { bytesToHex } from '@ethereumjs/util';
-import { FeeMarketEIP1559Transaction } from '@ethereumjs/tx';
-import { generateEthAddress } from './kdf/eth';
-import { Common } from '@ethereumjs/common'
+import { Web3 } from "web3";
+import { bytesToHex } from "@ethereumjs/util";
+import { FeeMarketEIP1559Transaction } from "@ethereumjs/tx";
+import { generateEthAddress } from "./kdf/eth";
 import { Contract, JsonRpcProvider } from "ethers";
 import { MPC_CONTRACT } from "./kdf/mpc";
 
-export class Ethereum {
-  constructor(chain_rpc, chain_id) {
-    this.web3 = new Web3(chain_rpc);
+export class EthereumVM {
+  constructor(chain_rpc) {
+    this.web3 = new Web3(new Web3.providers.HttpProvider(chain_rpc));
     window.web3 = this.web3;
     this.provider = new JsonRpcProvider(chain_rpc);
-    this.chain_id = chain_id;
     this.queryGasPrice();
   }
 
   async deriveAddress(accountId, derivation_path) {
-    const { address, publicKey } = await generateEthAddress({ accountId, derivation_path });
+    const { address, publicKey } = await generateEthAddress({
+      accountId,
+      derivation_path,
+    });
     return { address, publicKey };
   }
 
@@ -45,11 +46,11 @@ export class Ethereum {
   }
 
   async createTransaction({ sender, receiver, amount, data = undefined }) {
-    const common = new Common({ chain: this.chain_id });
-
     // Get the nonce & gas price
     const nonce = await this.web3.eth.getTransactionCount(sender);
     const { maxFeePerGas, maxPriorityFeePerGas } = await this.queryGasPrice();
+
+    const { chainId } = await this.provider.getNetwork();
 
     // Construct transaction
     const transactionData = {
@@ -60,49 +61,71 @@ export class Ethereum {
       to: receiver,
       data: data,
       value: BigInt(this.web3.utils.toWei(amount, "ether")),
-      chain: this.chain_id,
+      chainId: chainId,
     };
 
     // Create a transaction
-    const transaction = FeeMarketEIP1559Transaction.fromTxData(transactionData, { common });
+    const transaction = FeeMarketEIP1559Transaction.fromTxData(
+      transactionData,
+      {}
+    );
 
     // Store in sessionStorage for later
-    sessionStorage.setItem('transaction', transaction.serialize());
+    sessionStorage.setItem("transaction", transaction.serialize());
 
     return { transaction };
   }
 
-  async requestSignatureToMPC({ wallet, path, transaction, attachedDeposit = 1 }) {
+  async requestSignatureToMPC({
+    wallet,
+    path,
+    transaction,
+    attachedDeposit = 1,
+  }) {
     const payload = Array.from(transaction.getHashedMessageToSign());
 
     const { big_r, s, recovery_id } = await wallet.callMethod({
       contractId: MPC_CONTRACT,
-      method: 'sign',
+      method: "sign",
       args: { request: { payload, path, key_version: 0 } },
-      gas: '250000000000000', // 250 Tgas
+      gas: "250000000000000", // 250 Tgas
       deposit: attachedDeposit,
     });
 
-    return { big_r, s, recovery_id };
+    return {
+      big_r,
+      s,
+      recovery_id,
+    };
   }
 
   async reconstructSignedTransaction(big_r, S, recovery_id, transaction) {
     // reconstruct the signature
-    const r = Buffer.from(big_r.affine_point.substring(2), 'hex');
-    const s = Buffer.from(S.scalar, 'hex');
+    const r = Buffer.from(big_r.affine_point.substring(2), "hex");
+    const s = Buffer.from(S.scalar, "hex");
     const v = recovery_id;
 
     const signedTx = transaction.addSignature(v, r, s);
 
-    if (signedTx.getValidationErrors().length > 0) throw new Error("Transaction validation errors");
+    if (signedTx.getValidationErrors().length > 0)
+      throw new Error("Transaction validation errors");
     if (!signedTx.verifySignature()) throw new Error("Signature is not valid");
     return signedTx;
   }
 
   async reconstructSignedTXFromLocalSession(big_r, s, recovery_id, sender) {
-    const serialized = Uint8Array.from(JSON.parse(`[${sessionStorage.getItem('transaction')}]`));
-    const transaction = FeeMarketEIP1559Transaction.fromSerializedTx(serialized);
-    return this.reconstructSignedTransaction(big_r, s, recovery_id, transaction, sender);
+    const serialized = Uint8Array.from(
+      JSON.parse(`[${sessionStorage.getItem("transaction")}]`)
+    );
+    const transaction =
+      FeeMarketEIP1559Transaction.fromSerializedTx(serialized);
+    return this.reconstructSignedTransaction(
+      big_r,
+      s,
+      recovery_id,
+      transaction,
+      sender
+    );
   }
 
   // This code can be used to actually relay the transaction to the Ethereum network
@@ -110,7 +133,9 @@ export class Ethereum {
     const serializedTx = bytesToHex(signedTransaction.serialize());
     const relayed = this.web3.eth.sendSignedTransaction(serializedTx);
     let txHash;
-    await relayed.on('transactionHash', (hash) => { txHash = hash });
+    await relayed.on("transactionHash", (hash) => {
+      txHash = hash;
+    });
     return txHash;
   }
 }
