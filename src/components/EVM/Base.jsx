@@ -1,40 +1,79 @@
-import { useState, useEffect, useContext } from "react";
-import { NearContext } from "../../context";
-
-import { useDebounce } from "../../hooks/debounce";
+import { useState, useEffect, useContext, useRef } from "react";
 import PropTypes from "prop-types";
-import { useRef } from "react";
+
+import { NearContext } from "../../context";
+import { useDebounce } from "../../hooks/debounce";
+import { getTransactionHashes } from "../../services/utils";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
 import { EthereumVM } from "../../services/evm";
-import { MPC_CONTRACT } from "../../services/kdf/mpc";
 
 const Evm = new EthereumVM("https://base-sepolia.drpc.org");
 
 const contractAddress = "0xCd3b988b216790C598d9AB85Eee189e446CE526D";
 
-export function BaseView({ props: { setStatus, transactions } }) {
+const transactions = getTransactionHashes();
+
+export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(transactions ? "relay" : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
-
   const [senderLabel, setSenderLabel] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
-  const [action, setAction] = useState("function-call");
+  const [balance, setBalance] = useState(""); // Add balance state
+  const [action, setAction] = useState("transfer");
   const [derivation, setDerivation] = useState(
     sessionStorage.getItem("derivation") || "ethereum-1"
   );
+  const [reloaded, setReloaded] = useState(transactions.length);
+
+  const [gasPriceInGwei, setGasPriceInGwei] = useState("");
+  const [txCost, setTxCost] = useState("");
+
   const derivationPath = useDebounce(derivation, 1200);
-
-  const [reloaded, setReloaded] = useState(transactions.length ? true : false);
-
   const childRef = useRef();
 
   useEffect(() => {
-    // special case for web wallet that reload the whole page
-    if (reloaded && senderAddress) signTransaction();
+    async function fetchEthereumGasPrice() {
+      try {
+        // Fetch gas price in Wei
+        const gasPriceInWei = await Evm.web3.eth.getGasPrice();
+
+        // Convert gas price from Wei to Gwei
+        const gasPriceInGwei = Evm.web3.utils.fromWei(gasPriceInWei, "gwei");
+
+        // Gas limit for a standard ETH transfer
+        const gasLimit = 21000;
+
+        // Calculate transaction cost in ETH (gwei * gasLimit) / 1e9
+        const txCost = (gasPriceInGwei * gasLimit) / 1000000000;
+
+        // Format both gas price and transaction cost to 7 decimal places
+        const formattedGasPriceInGwei = parseFloat(gasPriceInGwei).toFixed(7);
+        const formattedTxCost = parseFloat(txCost).toFixed(7);
+
+        console.log(
+          `Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`
+        );
+        console.log(`Estimated Transaction Cost: ${formattedTxCost} ETH`);
+
+        setTxCost(formattedTxCost);
+        setGasPriceInGwei(formattedGasPriceInGwei);
+      } catch (error) {
+        console.error("Error fetching gas price:", error);
+      }
+    }
+
+    fetchEthereumGasPrice();
+  }, []);
+
+  // Handle signing transaction when the page is reloaded and senderAddress is set
+  useEffect(() => {
+    if (reloaded && senderAddress) {
+      signTransaction();
+    }
 
     async function signTransaction() {
       const { big_r, s, recovery_id } = await wallet.getTransactionResult(
@@ -49,41 +88,43 @@ export function BaseView({ props: { setStatus, transactions } }) {
 
       setSignedTransaction(signedTransaction);
       setStatus(
-        `✅ Signed payload ready to be relayed to the Base network`
+        "✅ Signed payload ready to be relayed to the Base network"
       );
       setStep("relay");
 
       setReloaded(false);
       removeUrlParams();
     }
-  }, [senderAddress]);
+  }, [senderAddress, reloaded, wallet, setStatus]);
 
+  // Handle changes to derivation path and query Base address and balance
   useEffect(() => {
+    resetAddressState();
+    fetchEthereumAddress();
+  }, [derivationPath, signedAccountId]);
+
+  const resetAddressState = () => {
     setSenderLabel("Waiting for you to stop typing...");
-    setStatus("Querying address on Base and balance...");
     setSenderAddress(null);
+    setStatus("");
+    setBalance(""); // Reset balance when derivation path changes
     setStep("request");
-  }, [derivation]);
+  };
 
-  useEffect(() => {
-    setEthAddress();
+  const fetchEthereumAddress = async () => {
+    const { address } = await Evm.deriveAddress(
+      signedAccountId,
+      derivationPath
+    );
+    setSenderAddress(address);
+    setSenderLabel(address);
 
-    async function setEthAddress() {
-      const { address } = await Evm.deriveAddress(
-        signedAccountId,
-        derivationPath
-      );
-      setSenderAddress(address);
-      setSenderLabel(address);
-
+    if (!reloaded) {
       const balance = await Evm.getBalance(address);
-      if (!reloaded)
-        setStatus(
-          `Your Base address is: ${address}, balance: ${balance} ETH`
-        );
+      setBalance(balance); // Update balance state
     }
-  }, [derivationPath]);
-
+  };
+  
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
@@ -124,6 +165,7 @@ export function BaseView({ props: { setStatus, transactions } }) {
     setStatus(
       "🔗 Relaying transaction to the Base network... this might take a while"
     );
+
     try {
       const txHash = await Evm.broadcastTX(signedTransaction);
       setStatus(
@@ -149,38 +191,69 @@ export function BaseView({ props: { setStatus, transactions } }) {
     setLoading(false);
   };
 
+  function removeUrlParams() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("transactionHashes");
+    window.history.replaceState({}, document.title, url);
+  }
+
   return (
     <>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">
-          Path:
-        </label>
-        <div className="col-sm-10">
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            value={derivation}
-            onChange={(e) => setDerivation(e.target.value)}
-            disabled={loading}
-          />
-          <div className="form-text" id="eth-sender">
-            {" "}
-            {senderLabel}{" "}
+      {/* Form Inputs */}
+      <div className="row mb-0">
+        <label className="col-sm-2 col-form-label"></label>
+        <div className="col-sm-10"></div>
+      </div>
+
+      <div className="input-group input-group-sm my-2 mb-2">
+        <span className="input-group-text bg-primary text-white" id="chain">
+          PATH
+        </span>
+        <input
+          type="text"
+          className="form-control form-control-sm"
+          value={derivation}
+          onChange={(e) => setDerivation(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+
+      {/* ADDRESS & BALANCE */}
+      <div className="card">
+        <div className="row mb-0">
+          <label className="col-sm-2 col-form-label text-end">Address:</label>
+          <div className="col-sm-10 fs-5">
+            <div className="form-text" id="eth-sender">
+              {senderLabel}
+            </div>
+          </div>
+        </div>
+        <div className="row mb-0">
+          <label className="col-sm-2 col-form-label text-end">Balance:</label>
+          <div className="col-sm-10 fs-5">
+            <div className="form-text text-muted ">
+              {balance ? (
+                `${balance} ETH`
+              ) : (
+                <span className="text-warning">Fetching balance...</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
       <div className="input-group input-group-sm my-2 mb-4">
-        <span className="text-primary input-group-text" id="chain">
-          Action
+        <span className="input-group-text bg-info text-white" id="chain">
+          ACTION
         </span>
         <select
           className="form-select"
           aria-describedby="chain"
-          value={action}
           onChange={(e) => setAction(e.target.value)}
+          disabled={loading}
         >
-          <option value="transfer"> Ξ Transfer </option>
-          <option value="function-call"> Ξ Call Counter </option>
+          <option value="transfer">Ξ Transfer</option>
+          <option value="function-call">Ξ Call Counter</option>
         </select>
       </div>
 
@@ -193,15 +266,41 @@ export function BaseView({ props: { setStatus, transactions } }) {
         />
       )}
 
-      <div className="text-center">
+      <div className="text-center mt-4 d-flex justify-content-center">
+        <div className="table-responsive " style={{ maxWidth: "400px" }}>
+          <table className="table table-hover text-center w-auto">
+            <caption className="caption-top text-center">
+              Sepolia Gas Prices
+            </caption>
+            <thead>
+              <tr className="table-light">
+                <th scope="col">Price</th>
+                <th scope="col">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{gasPriceInGwei}</td>
+                <td>GWEI</td>
+              </tr>
+              <tr>
+                <td>{txCost}</td>
+                <td>ETH</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Execute Buttons */}
+      <div className="d-grid gap-2">
         {step === "request" && (
           <button
-            className="btn btn-primary text-center"
+            className="btn btn-outline-success text-center btn-lg"
             onClick={UIChainSignature}
             disabled={loading}
           >
-            {" "}
-            Request Signature{" "}
+            Request Signature
           </button>
         )}
         {step === "relay" && (
@@ -210,24 +309,17 @@ export function BaseView({ props: { setStatus, transactions } }) {
             onClick={relayTransaction}
             disabled={loading}
           >
-            {" "}
-            Relay Transaction{" "}
+            Relay Transaction
           </button>
         )}
       </div>
     </>
   );
-
-  function removeUrlParams() {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("transactionHashes");
-    window.history.replaceState({}, document.title, url);
-  }
 }
 
 BaseView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    transactions: PropTypes.arrayOf(PropTypes.string).isRequired,
+    MPC_CONTRACT: PropTypes.string.isRequired,
   }).isRequired,
 };

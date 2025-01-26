@@ -30,7 +30,7 @@ export class EthereumVM {
 
   async getBalance(accountId) {
     const balance = await this.web3.eth.getBalance(accountId);
-    return this.web3.utils.fromWei(balance, "ether");
+    return this.web3.utils.fromWei(balance, 'ether');
   }
 
   async getContractViewFunction(receiver, abi, methodName, args = []) {

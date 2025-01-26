@@ -1,89 +1,159 @@
-import { useState, useEffect, useContext } from "react";
-import { NearContext } from "../../context";
+import { useState, useEffect, useContext, useRef } from "react";
+import PropTypes from "prop-types";
 
+import { NearContext } from "../../context";
 import { useDebounce } from "../../hooks/debounce";
-import PropTypes from 'prop-types';
-import { useRef } from "react";
+import { getTransactionHashes } from "../../services/utils";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
 import { EthereumVM } from "../../services/evm";
-import { MPC_CONTRACT } from "../../services/kdf/mpc";
 
-const Evm = new EthereumVM('https://sepolia.drpc.org');
+const Evm = new EthereumVM("https://sepolia.drpc.org");
 
 const contractAddress = "0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3";
 
-export function EthereumView({ props: { setStatus, transactions } }) {
+const transactions = getTransactionHashes();
+
+export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(transactions ? 'relay' : "request");
+  const [step, setStep] = useState(transactions ? "relay" : "request");
   const [signedTransaction, setSignedTransaction] = useState(null);
+  const [senderLabel, setSenderLabel] = useState("");
+  const [senderAddress, setSenderAddress] = useState("");
+  const [balance, setBalance] = useState(""); // Add balance state
+  const [action, setAction] = useState("transfer");
+  const [derivation, setDerivation] = useState(
+    sessionStorage.getItem("derivation") || "ethereum-1"
+  );
+  const [reloaded, setReloaded] = useState(transactions.length);
 
-  const [senderLabel, setSenderLabel] = useState("")
-  const [senderAddress, setSenderAddress] = useState("")
-  const [action, setAction] = useState("transfer")
-  const [derivation, setDerivation] = useState(sessionStorage.getItem('derivation') || "ethereum-1");
+  const [gasPriceInGwei, setGasPriceInGwei] = useState("");
+  const [txCost, setTxCost] = useState("");
+
   const derivationPath = useDebounce(derivation, 1200);
-
-  const [reloaded, setReloaded] = useState(transactions.length ? true : false);
-
   const childRef = useRef();
 
   useEffect(() => {
-    // special case for web wallet that reload the whole page
-    if (reloaded && senderAddress) signTransaction()
+    async function fetchEthereumGasPrice() {
+      try {
+        // Fetch gas price in Wei
+        const gasPriceInWei = await Evm.web3.eth.getGasPrice();
+
+        // Convert gas price from Wei to Gwei
+        const gasPriceInGwei = Evm.web3.utils.fromWei(gasPriceInWei, "gwei");
+
+        // Gas limit for a standard ETH transfer
+        const gasLimit = 21000;
+
+        // Calculate transaction cost in ETH (gwei * gasLimit) / 1e9
+        const txCost = (gasPriceInGwei * gasLimit) / 1000000000;
+
+        // Format both gas price and transaction cost to 7 decimal places
+        const formattedGasPriceInGwei = parseFloat(gasPriceInGwei).toFixed(7);
+        const formattedTxCost = parseFloat(txCost).toFixed(7);
+
+        console.log(
+          `Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`
+        );
+        console.log(`Estimated Transaction Cost: ${formattedTxCost} ETH`);
+
+        setTxCost(formattedTxCost);
+        setGasPriceInGwei(formattedGasPriceInGwei);
+      } catch (error) {
+        console.error("Error fetching gas price:", error);
+      }
+    }
+
+    fetchEthereumGasPrice();
+  }, []);
+
+  // Handle signing transaction when the page is reloaded and senderAddress is set
+  useEffect(() => {
+    if (reloaded && senderAddress) {
+      signTransaction();
+    }
 
     async function signTransaction() {
-      const { big_r, s, recovery_id } = await wallet.getTransactionResult(transactions[0]);
-      const signedTransaction = await Evm.reconstructSignedTXFromLocalSession(big_r, s, recovery_id, senderAddress);
+      const { big_r, s, recovery_id } = await wallet.getTransactionResult(
+        transactions[0]
+      );
+      const signedTransaction = await Evm.reconstructSignedTXFromLocalSession(
+        big_r,
+        s,
+        recovery_id,
+        senderAddress
+      );
 
       setSignedTransaction(signedTransaction);
-      setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
-      setStep('relay');
+      setStatus(
+        "✅ Signed payload ready to be relayed to the Ethereum network"
+      );
+      setStep("relay");
 
       setReloaded(false);
       removeUrlParams();
     }
+  }, [senderAddress, reloaded, wallet, setStatus]);
 
-  }, [senderAddress]);
-
+  // Handle changes to derivation path and query Ethereum address and balance
   useEffect(() => {
-    setSenderLabel('Waiting for you to stop typing...')
-    setStatus('Querying Ethereum address and Balance...');
-    setSenderAddress(null)
-    setStep('request');
-  }, [derivation]);
+    resetAddressState();
+    fetchEthereumAddress();
+  }, [derivationPath, signedAccountId]);
 
-  useEffect(() => {
-    setEthAddress()
+  const resetAddressState = () => {
+    setSenderLabel("Waiting for you to stop typing...");
+    setSenderAddress(null);
+    setStatus("");
+    setBalance(""); // Reset balance when derivation path changes
+    setStep("request");
+  };
 
-    async function setEthAddress() {
-      const { address } = await Evm.deriveAddress(signedAccountId, derivationPath);
-      setSenderAddress(address);
-      setSenderLabel(address);
+  const fetchEthereumAddress = async () => {
+    const { address } = await Evm.deriveAddress(
+      signedAccountId,
+      derivationPath
+    );
+    setSenderAddress(address);
+    setSenderLabel(address);
 
+    if (!reloaded) {
       const balance = await Evm.getBalance(address);
-      if (!reloaded) setStatus(`Your Ethereum address is: ${address}, balance: ${balance} ETH`);
+      setBalance(balance); // Update balance state
     }
-  }, [derivationPath]);
-
+  };
+  
   async function chainSignature() {
-    setStatus('🏗️ Creating transaction');
+    setStatus("🏗️ Creating transaction");
 
     const { transaction } = await childRef.current.createTransaction();
 
-    setStatus(`🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`);
+    setStatus(
+      `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
+    );
     try {
       // to reconstruct on reload
-      sessionStorage.setItem('derivation', derivationPath);
+      sessionStorage.setItem("derivation", derivationPath);
 
-      const { big_r, s, recovery_id } = await Evm.requestSignatureToMPC({ wallet, path: derivationPath, transaction });
-      const signedTransaction = await Evm.reconstructSignedTransaction(big_r, s, recovery_id, transaction);
+      const { big_r, s, recovery_id } = await Evm.requestSignatureToMPC({
+        wallet,
+        path: derivationPath,
+        transaction,
+      });
+      const signedTransaction = await Evm.reconstructSignedTransaction(
+        big_r,
+        s,
+        recovery_id,
+        transaction
+      );
 
       setSignedTransaction(signedTransaction);
-      setStatus(`✅ Signed payload ready to be relayed to the Ethereum network`);
-      setStep('relay');
+      setStatus(
+        `✅ Signed payload ready to be relayed to the Ethereum network`
+      );
+      setStep("relay");
     } catch (e) {
       setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
@@ -92,12 +162,18 @@ export function EthereumView({ props: { setStatus, transactions } }) {
 
   async function relayTransaction() {
     setLoading(true);
-    setStatus('🔗 Relaying transaction to the Ethereum network... this might take a while');
+    setStatus(
+      "🔗 Relaying transaction to the Ethereum network... this might take a while"
+    );
+
     try {
       const txHash = await Evm.broadcastTX(signedTransaction);
       setStatus(
         <>
-          <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank"> ✅ Successful </a>
+          <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank">
+            {" "}
+            ✅ Successful{" "}
+          </a>
         </>
       );
       childRef.current.afterRelay();
@@ -105,7 +181,7 @@ export function EthereumView({ props: { setStatus, transactions } }) {
       setStatus(`❌ Error: ${e.message}`);
     }
 
-    setStep('request');
+    setStep("request");
     setLoading(false);
   }
 
@@ -113,48 +189,137 @@ export function EthereumView({ props: { setStatus, transactions } }) {
     setLoading(true);
     await chainSignature();
     setLoading(false);
+  };
+
+  function removeUrlParams() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("transactionHashes");
+    window.history.replaceState({}, document.title, url);
   }
 
   return (
     <>
-      <div className="row mb-3">
-        <label className="col-sm-2 col-form-label col-form-label-sm">Path:</label>
-        <div className="col-sm-10">
-          <input type="text" className="form-control form-control-sm" value={derivation} onChange={(e) => setDerivation(e.target.value)} disabled={loading} />
-          <div className="form-text" id="eth-sender"> {senderLabel} </div>
+      {/* Form Inputs */}
+      <div className="row mb-0">
+        <label className="col-sm-2 col-form-label"></label>
+        <div className="col-sm-10"></div>
+      </div>
+
+      <div className="input-group input-group-sm my-2 mb-2">
+        <span className="input-group-text bg-primary text-white" id="chain">
+          PATH
+        </span>
+        <input
+          type="text"
+          className="form-control form-control-sm"
+          value={derivation}
+          onChange={(e) => setDerivation(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+
+      {/* ADDRESS & BALANCE */}
+      <div className="card">
+        <div className="row mb-0">
+          <label className="col-sm-2 col-form-label text-end">Address:</label>
+          <div className="col-sm-10 fs-5">
+            <div className="form-text" id="eth-sender">
+              {senderLabel}
+            </div>
+          </div>
+        </div>
+        <div className="row mb-0">
+          <label className="col-sm-2 col-form-label text-end">Balance:</label>
+          <div className="col-sm-10 fs-5">
+            <div className="form-text text-muted ">
+              {balance ? (
+                `${balance} ETH`
+              ) : (
+                <span className="text-warning">Fetching balance...</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
       <div className="input-group input-group-sm my-2 mb-4">
-        <span className="text-primary input-group-text" id="chain">Action</span>
-        <select className="form-select" aria-describedby="chain" onChange={e => setAction(e.target.value)} >
-          <option value="transfer"> Ξ Transfer </option>
-          <option value="function-call"> Ξ Call Counter </option>
+        <span className="input-group-text bg-info text-white" id="chain">
+          ACTION
+        </span>
+        <select
+          className="form-select"
+          aria-describedby="chain"
+          onChange={(e) => setAction(e.target.value)}
+          disabled={loading}
+        >
+          <option value="transfer">Ξ Transfer</option>
+          <option value="function-call">Ξ Call Counter</option>
         </select>
       </div>
 
-      {
-        action === 'transfer'
-          ? <TransferForm ref={childRef} props={{ Evm, senderAddress, loading }} />
-          : <FunctionCallForm ref={childRef} props={{ Evm, contractAddress, senderAddress, loading }} />
-      }
+      {action === "transfer" ? (
+        <TransferForm ref={childRef} props={{ Evm, senderAddress, loading }} />
+      ) : (
+        <FunctionCallForm
+          ref={childRef}
+          props={{ Evm, contractAddress, senderAddress, loading }}
+        />
+      )}
 
-      <div className="text-center">
-        {step === 'request' && <button className="btn btn-primary text-center" onClick={UIChainSignature} disabled={loading}> Request Signature </button>}
-        {step === 'relay' && <button className="btn btn-success text-center" onClick={relayTransaction} disabled={loading}> Relay Transaction </button>}
+      <div className="text-center mt-4 d-flex justify-content-center">
+        <div className="table-responsive " style={{ maxWidth: "400px" }}>
+          <table className="table table-hover text-center w-auto">
+            <caption className="caption-top text-center">
+              Sepolia Gas Prices
+            </caption>
+            <thead>
+              <tr className="table-light">
+                <th scope="col">Price</th>
+                <th scope="col">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{gasPriceInGwei}</td>
+                <td>GWEI</td>
+              </tr>
+              <tr>
+                <td>{txCost}</td>
+                <td>ETH</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Execute Buttons */}
+      <div className="d-grid gap-2">
+        {step === "request" && (
+          <button
+            className="btn btn-outline-success text-center btn-lg"
+            onClick={UIChainSignature}
+            disabled={loading}
+          >
+            Request Signature
+          </button>
+        )}
+        {step === "relay" && (
+          <button
+            className="btn btn-success text-center"
+            onClick={relayTransaction}
+            disabled={loading}
+          >
+            Relay Transaction
+          </button>
+        )}
       </div>
     </>
-  )
-
-  function removeUrlParams() {
-    const url = new URL(window.location.href);
-    url.searchParams.delete('transactionHashes');
-    window.history.replaceState({}, document.title, url);
-  }
+  );
 }
 
 EthereumView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    transactions: PropTypes.arrayOf(PropTypes.string).isRequired
-  }).isRequired
+    MPC_CONTRACT: PropTypes.string.isRequired,
+  }).isRequired,
 };
