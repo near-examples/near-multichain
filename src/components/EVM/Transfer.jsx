@@ -4,24 +4,16 @@ import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
 
-export const TransferForm = forwardRef(
-  ({ props: { Eth, senderAddress, loading } }, ref) => {
-    const [receiver, setReceiver] = useState(
-      "0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD"
-    );
-    const [amount, setAmount] = useState(0.005);
+export const TransferForm = forwardRef(({ props: { Evm, senderAddress, loading } }, ref) => {
+  const [receiver, setReceiver] = useState("0xb8A6a4eb89b27703E90ED18fDa1101c7aa02930D");
+  const [amount, setAmount] = useState(0.005);
 
-    useImperativeHandle(ref, () => ({
-      async createTransaction() {
-        return await Eth.createTransaction({
-          sender: senderAddress,
-          receiver: receiver,
-          amount: amount,
-          data: undefined,
-        });
-      },
-      async afterRelay() {},
-    }));
+  useImperativeHandle(ref, () => ({
+    async createTransaction() {
+      return await Evm.createTransaction({ sender: senderAddress, receiver, amount });
+    },
+    async afterRelay() { }
+  }));
 
     return (
       <>
@@ -70,10 +62,10 @@ TransferForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
-    Eth: PropTypes.shape({
-      createTransaction: PropTypes.func.isRequired,
-    }).isRequired,
-  }).isRequired,
+    Evm: PropTypes.shape({
+      createTransaction: PropTypes.func.isRequired
+    }).isRequired
+  }).isRequired
 };
 
 TransferForm.displayName = "TransferForm";
