@@ -3,9 +3,10 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
+import Web3 from "web3";
 
 export const TransferForm = forwardRef(
-  ({ props: { Eth, senderAddress, loading } }, ref) => {
+  ({ props: { Evm, senderAddress, loading } }, ref) => {
     const [receiver, setReceiver] = useState(
       "0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD"
     );
@@ -13,11 +14,11 @@ export const TransferForm = forwardRef(
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
-        return await Eth.createTransaction({
-          sender: senderAddress,
-          receiver: receiver,
-          amount: amount,
+        return await Evm.getMPCPayloadAndTransaction({
+          from: senderAddress,
+          to: receiver,
           data: undefined,
+          value: Web3.utils.toWei(amount, "ether"),
         });
       },
       async afterRelay() {},
@@ -70,8 +71,8 @@ TransferForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
-    Eth: PropTypes.shape({
-      createTransaction: PropTypes.func.isRequired,
+    Evm: PropTypes.shape({
+      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };

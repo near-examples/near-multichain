@@ -30,6 +30,7 @@
     "hash.js": "^1.1.7",
     "js-sha3": "^0.9.3",
     "keccak": "^3.0.4",
+    "multichain-tools": "4.0.0",
     "near-api-js": "^5.0.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
