@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { forwardRef } from 'react';
 import { useImperativeHandle } from 'react';
+import Web3 from 'web3';
 
 const abi = [
   {
@@ -48,7 +49,7 @@ const abi = [
 
 const contract = '0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3';
 
-export const FunctionCallForm = forwardRef(({ props: { Eth, senderAddress, loading } }, ref) => {
+export const FunctionCallForm = forwardRef(({ props: { Eth, Evm, senderAddress, loading } }, ref) => {
   const [number, setNumber] = useState(1000);
   const [currentNumber, setCurrentNumber] = useState('');
 
@@ -61,9 +62,14 @@ export const FunctionCallForm = forwardRef(({ props: { Eth, senderAddress, loadi
 
   useImperativeHandle(ref, () => ({
     async createTransaction() {
-      const data = Eth.createTransactionData(contract, abi, 'set', [number]);
-      const { transaction } = await Eth.createTransaction({ sender: senderAddress, receiver: contract, amount: 0, data });
-      return { transaction };
+        const data = Eth.createTransactionData(contract, abi, "set", [number]);
+
+        return await Evm.getMPCPayloadAndTransaction({
+          from: senderAddress,
+          to: contract,
+          data: data,
+          value: Web3.utils.toWei(0, "ether"),
+        });
     },
 
     async afterRelay() { getNumber(); }
@@ -107,6 +113,9 @@ FunctionCallForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
+    Evm: PropTypes.shape({
+      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
+    }).isRequired,
     Eth: PropTypes.shape({
       createTransaction: PropTypes.func.isRequired,
       createTransactionData: PropTypes.func.isRequired,

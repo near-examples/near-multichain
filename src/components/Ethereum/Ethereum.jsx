@@ -7,9 +7,17 @@ import { useDebounce } from "../../hooks/debounce";
 import { getTransactionHashes } from "../../services/utils";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
+import { MPC_CONTRACT } from "../../services/kdf/mpc";
+import { EVM } from "multichain-tools";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum("https://sepolia.drpc.org", Sepolia);
+
+const Evm = new EVM({
+  providerUrl: "https://sepolia.drpc.org",
+  nearNetworkId: "testnet",
+  contract: MPC_CONTRACT,
+});
 
 const transactions = getTransactionHashes();
 
@@ -18,7 +26,8 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(transactions ? "relay" : "request");
-  const [signedTransaction, setSignedTransaction] = useState(null);
+  const [unsignedTransaction, setUnsignedTransaction] = useState(null);
+  const [signature, setSignature] = useState(null);
   const [senderLabel, setSenderLabel] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [balance, setBalance] = useState(""); // Add balance state
@@ -75,16 +84,15 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     }
 
     async function signTransaction() {
-      const { big_r, s, recovery_id } = await wallet.getTransactionResult(
-        transactions[0]
-      );
-      const signedTransaction = await Eth.reconstructSignedTXFromLocalSession(
-        big_r,
-        s,
-        recovery_id,
-        senderAddress
-      );
-      setSignedTransaction(signedTransaction);
+      const transaction = Evm.getTransaction("evm_transaction");
+
+      if (!transaction) return;
+
+      setUnsignedTransaction(transaction);
+
+      const signature = await wallet.getTransactionResult(transactions[0]);
+      setSignature(signature);
+
       setStatus(
         "✅ Signed payload ready to be relayed to the Ethereum network"
       );
@@ -126,7 +134,10 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction } = await childRef.current.createTransaction();
+    const { transaction, mpcPayloads } = await childRef.current.createTransaction();
+
+    Evm.setTransaction(transaction, "evm_transaction");
+    setUnsignedTransaction(transaction);
 
     setStatus(
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
@@ -135,19 +146,24 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       // to reconstruct on reload
       sessionStorage.setItem("derivation", derivationPath);
 
-      const { big_r, s, recovery_id } = await Eth.requestSignatureToMPC({
-        wallet,
-        path: derivationPath,
-        transaction,
+      // even tough ChainSignaturesContract.sign() is out there
+      // we can't use it here because FullAcess key pair can't be retrieved directly from WalletSelector
+      const signature = await wallet.callMethod({
+        contractId: MPC_CONTRACT,
+        method: "sign",
+        args: {
+          request: {
+            payload: Array.from(mpcPayloads[0].payload),
+            path: derivationPath,
+            key_version: 0,
+          },
+        },
+        gas: "250000000000000", // 250 Tgas
+        deposit: 1,
       });
-      const signedTransaction = await Eth.reconstructSignedTransaction(
-        big_r,
-        s,
-        recovery_id,
-        transaction
-      );
 
-      setSignedTransaction(signedTransaction);
+      setSignature(signature);
+
       setStatus(
         `✅ Signed payload ready to be relayed to the Ethereum network`
       );
@@ -165,7 +181,10 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     );
 
     try {
-      const txHash = await Eth.broadcastTX(signedTransaction);
+      const txHash = await Evm.addSignatureAndBroadcast({
+        transaction: unsignedTransaction,
+        mpcSignatures: [signature],
+      });
       setStatus(
         <>
           <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank">
@@ -256,11 +275,11 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       </div>
 
       {action === "transfer" ? (
-        <TransferForm ref={childRef} props={{ Eth, senderAddress, loading }} />
+        <TransferForm ref={childRef} props={{ Evm, senderAddress, loading }} />
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ Eth, senderAddress, loading }}
+          props={{ Eth, Evm, senderAddress, loading }}
         />
       )}
 
