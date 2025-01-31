@@ -9,6 +9,8 @@ import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
 import { MPC_CONTRACT } from "../../services/kdf/mpc";
 import { EVM } from "multichain-tools";
+import { JsonRpcProvider } from "ethers";
+import Web3 from "web3";
 
 const Sepolia = 11155111;
 const Eth = new Ethereum("https://sepolia.drpc.org", Sepolia);
@@ -18,6 +20,8 @@ const Evm = new EVM({
   nearNetworkId: "testnet",
   contract: MPC_CONTRACT,
 });
+
+const provider = new JsonRpcProvider("https://sepolia.drpc.org");
 
 const transactions = getTransactionHashes();
 
@@ -118,7 +122,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   };
 
   const fetchEthereumAddress = async () => {
-    const { address } = await Eth.deriveAddress(
+    const { address } = await Evm.deriveAddressAndPublicKey(
       signedAccountId,
       derivationPath
     );
@@ -126,7 +130,8 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     setSenderLabel(address);
 
     if (!reloaded) {
-      const balance = await Eth.getBalance(address);
+      const balanceInWei = await provider.getBalance(address)
+      const balance = Web3.utils.fromWei(balanceInWei, 'ether');
       setBalance(balance); // Update balance state
     }
   };
@@ -134,7 +139,8 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction, mpcPayloads } = await childRef.current.createTransaction();
+    const { transaction, mpcPayloads } =
+      await childRef.current.createTransaction();
 
     Evm.setTransaction(transaction, "evm_transaction");
     setUnsignedTransaction(transaction);
@@ -279,7 +285,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ Eth, Evm, senderAddress, loading }}
+          props={{ Evm, senderAddress, loading }}
         />
       )}
 
