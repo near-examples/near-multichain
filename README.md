@@ -2,7 +2,7 @@
 
 ![alpha badge](https://img.shields.io/badge/status-alpha-red)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-green)](https://github.com/near-examples/near-multichain/pulls)
-[![Chain Signatures Docs](https://img.shields.io/badge/Chain_Signatures_Docs-blue)](https://near-docs.onrender.com/concepts/abstraction/chain-signatures)
+[![Chain Signatures Docs](https://img.shields.io/badge/Chain_Signatures_Docs-blue)](https://docs.near.org/concepts/abstraction/chain-signatures)
 [![Dev Support](https://img.shields.io/badge/DEV_SUPPORT-red)](https://t.me/chain_abstraction)
 
 An example on signing and executing transactions across multiple blockchain protocols from one NEAR account
