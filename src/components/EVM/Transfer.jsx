@@ -3,17 +3,26 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
+import Web3 from "web3";
 
-export const TransferForm = forwardRef(({ props: { Evm, senderAddress, loading } }, ref) => {
-  const [receiver, setReceiver] = useState("0xb8A6a4eb89b27703E90ED18fDa1101c7aa02930D");
-  const [amount, setAmount] = useState(0.005);
+export const TransferForm = forwardRef(
+  ({ props: { Evm, senderAddress, loading } }, ref) => {
+    const [receiver, setReceiver] = useState(
+      "0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD"
+    );
+    const [amount, setAmount] = useState("0.005");
 
-  useImperativeHandle(ref, () => ({
-    async createTransaction() {
-      return await Evm.createTransaction({ sender: senderAddress, receiver, amount });
-    },
-    async afterRelay() { }
-  }));
+    useImperativeHandle(ref, () => ({
+      async createTransaction() {
+        return await Evm.getMPCPayloadAndTransaction({
+          from: senderAddress,
+          to: receiver,
+          data: undefined,
+          value: Web3.utils.toWei(amount, "ether"),
+        });
+      },
+      async afterRelay() {},
+    }));
 
     return (
       <>
@@ -42,7 +51,8 @@ export const TransferForm = forwardRef(({ props: { Evm, senderAddress, loading }
                     className="form-control"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    step="0.01"
+                    step="0.001"
+                    min="0.001"
                     disabled={loading}
                   />
                   <span className="input-group-text bg-warning text-white">
@@ -63,9 +73,9 @@ TransferForm.propTypes = {
     senderAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
     Evm: PropTypes.shape({
-      createTransaction: PropTypes.func.isRequired
-    }).isRequired
-  }).isRequired
+      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
+    }).isRequired,
+  }).isRequired,
 };
 
 TransferForm.displayName = "TransferForm";
