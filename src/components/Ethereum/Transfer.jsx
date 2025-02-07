@@ -10,7 +10,7 @@ export const TransferForm = forwardRef(
     const [receiver, setReceiver] = useState(
       "0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD"
     );
-    const [amount, setAmount] = useState(0.005);
+    const [amount, setAmount] = useState("0.005");
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
@@ -51,7 +51,8 @@ export const TransferForm = forwardRef(
                     className="form-control"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    step="0.01"
+                    step="0.001"
+                    min="0.001"
                     disabled={loading}
                   />
                   <span className="input-group-text bg-warning text-white">

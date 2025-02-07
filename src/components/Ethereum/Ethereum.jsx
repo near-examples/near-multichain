@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, useRef } from "react";
 import PropTypes from "prop-types";
 
 import { NearContext } from "../../context";
-import { Ethereum } from "../../services/ethereum";
+
 import { useDebounce } from "../../hooks/debounce";
 import { getTransactionHashes } from "../../services/utils";
 import { TransferForm } from "./Transfer";
@@ -12,8 +12,7 @@ import { EVM } from "multichain-tools";
 import { JsonRpcProvider } from "ethers";
 import Web3 from "web3";
 
-const Sepolia = 11155111;
-const Eth = new Ethereum("https://sepolia.drpc.org", Sepolia);
+const web3 = new Web3("https://sepolia.drpc.org");
 
 const Evm = new EVM({
   providerUrl: "https://sepolia.drpc.org",
@@ -51,10 +50,10 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     async function fetchEthereumGasPrice() {
       try {
         // Fetch gas price in Wei
-        const gasPriceInWei = await Eth.web3.eth.getGasPrice();
+        const gasPriceInWei = await web3.eth.getGasPrice();
 
         // Convert gas price from Wei to Gwei
-        const gasPriceInGwei = Eth.web3.utils.fromWei(gasPriceInWei, "gwei");
+        const gasPriceInGwei = web3.utils.fromWei(gasPriceInWei, "gwei");
 
         // Gas limit for a standard ETH transfer
         const gasLimit = 21000;
