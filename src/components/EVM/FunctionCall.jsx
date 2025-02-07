@@ -1,10 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
-import Web3 from "web3";
-import { Contract, JsonRpcProvider } from "ethers";
 
 const abi = [
   {
@@ -48,20 +46,17 @@ const abi = [
   },
 ];
 
-const contractAddress = "0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3";
-
 export const FunctionCallForm = forwardRef(
-  ({ props: { Evm, senderAddress, loading } }, ref) => {
+  ({ props: { Evm, contractAddress, senderAddress, loading } }, ref) => {
     const [number, setNumber] = useState(1000);
     const [currentNumber, setCurrentNumber] = useState("");
-    const contract = useMemo(() => {
-      const provider = new JsonRpcProvider("https://sepolia.drpc.org", 11155111);
-
-      return new Contract(contractAddress, abi, provider);
-    }, []);
 
     async function getNumber() {
-      const result = await contract["get"]();
+      const result = await Evm.getContractViewFunction(
+        contractAddress,
+        abi,
+        "get"
+      );
       setCurrentNumber(String(result));
     }
 
@@ -71,14 +66,16 @@ export const FunctionCallForm = forwardRef(
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
-        const data = contract.interface.encodeFunctionData("set", [number]);
-
-        return await Evm.getMPCPayloadAndTransaction({
-          from: senderAddress,
-          to: contractAddress,
-          data: data,
-          value: Web3.utils.toWei(0, "ether"),
+        const data = Evm.createTransactionData(contractAddress, abi, "set", [
+          number,
+        ]);
+        const { transaction } = await Evm.createTransaction({
+          sender: senderAddress,
+          receiver: contractAddress,
+          amount: 0,
+          data,
         });
+        return { transaction };
       },
 
       async afterRelay() {
@@ -129,11 +126,14 @@ export const FunctionCallForm = forwardRef(
 FunctionCallForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string.isRequired,
+    contractAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
     Evm: PropTypes.shape({
-      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
+      createTransaction: PropTypes.func.isRequired,
+      createTransactionData: PropTypes.func.isRequired,
+      getContractViewFunction: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };
 
-FunctionCallForm.displayName = "EthereumContractView";
+FunctionCallForm.displayName = "FunctionCallForm";

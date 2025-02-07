@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { NearContext } from './context';
 import { Wallet } from './services/near-wallet';
 import Navbar from './components/Navbar';
-import { EthereumView } from './components/Ethereum/Ethereum';
+import { EthereumView } from './components/EVM/Ethereum';
+import { BaseView } from './components/EVM/Base';
 import { BitcoinView } from './components/Bitcoin';
 import { MPC_CONTRACT } from './services/kdf/mpc';
 
@@ -68,12 +69,16 @@ function App() {
                   onChange={(e) => setChain(e.target.value)}
                 >
                   <option value='eth'> Ξ Ethereum </option>
+                  <option value='base'> Ξ Base </option>
                   <option value='btc'> ₿ BTC </option>
                 </select>
               </div>
 
               {chain === 'eth' && (
                 <EthereumView props={{ setStatus, MPC_CONTRACT }} />
+              )}
+              {chain === 'base' && (
+                <BaseView props={{ setStatus, MPC_CONTRACT }} />
               )}
               {chain === 'btc' && (
                 <BitcoinView props={{ setStatus, MPC_CONTRACT }} />

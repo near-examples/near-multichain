@@ -240,6 +240,7 @@ async function constructPsbt(
 
       if (scriptHex.startsWith('76a914')) {
         console.log('legacy');
+        const bitcoinRpc = `https://blockstream.info/${networkId === 'testnet' ? 'testnet' : ''}/api`;
         const nonWitnessUtxo = await fetch(`${bitcoinRpc}/tx/${utxo.txid}/hex`).then(result => result.text())
 
         console.log('nonWitnessUtxo hex:', nonWitnessUtxo)
