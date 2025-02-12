@@ -5,35 +5,60 @@ import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
 import { Bitcoin } from "../services/bitcoin";
 import { getTransactionHashes } from "../services/utils";
+import { Bitcoin as BT } from "multichain-tools";
+import { MPC_CONTRACT, MPC_KEY } from "../services/kdf/mpc";
+import { Bitcoin as BT2, BTCRpcAdapters } from 'signet.js'
+import { KeyPair } from '@near-js/crypto'
+import { utils as utilsSignet } from 'signet.js'
 
+//version 1
 const BTC = new Bitcoin("testnet");
+//version 2
+// "https://bitcoin-testnet.drpc.org"
+const PROVIDER_URL = "https://mempool.space/testnet4/api";
+const BTC2 = new BT({
+  providerUrl: PROVIDER_URL,
+  nearNetworkId: "testnet",
+  contract: MPC_CONTRACT,
+  network: "testnet"
+});
 
-const transactions = getTransactionHashes();
+//version 3
+
+// const keypair = KeyPair.fromString(MPC_KEY)
+
+// const contract = new utilsSignet.chains.near.ChainSignatureContract({
+//   networkId: 'testnet',
+//   contractId: 'v1.signer-prod.testnet',
+//   accountId:"maguila.testnet",
+//   keypair,
+// })
+
+// const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
+// const bitcoinChain = new BT2({
+//   network: 'testnet',
+//   contract,
+//   btcRpcAdapter,
+// })
+
+
 
 export function BitcoinView({ props: { setStatus } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [receiver, setReceiver] = useState(
-    "tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5"
+    "tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu"
   );
   const [amount, setAmount] = useState(1000);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(transactions.length ? "relay" : "request");
+  const [step, setStep] = useState("relay");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
   const [senderPK, setSenderPK] = useState("");
+  const [unsignedTransaction, setUnsignedTransaction] = useState(null)
 
   const [derivation, setDerivation] = useState("bitcoin-1");
   const derivationPath = useDebounce(derivation, 500);
-
-  const getSignedTx = async () => {
-    const signature = await wallet.getTransactionResult(transactions[0]);
-
-    const signedTransaction = await BTC.reconstructSignedTransactionFromSessionStorage(signature);
-
-    setSignedTransaction(signedTransaction);
-    removeUrlParams();
-  };
 
   useEffect(() => {
     if (transactions.length === 0) return;
@@ -52,14 +77,14 @@ export function BitcoinView({ props: { setStatus } }) {
       setStatus("Querying your address and balance");
       setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
-      const { address, publicKey } = await BTC.deriveAddress(
+      const { address, publicKey } = await BTC2.deriveAddressAndPublicKey(
         signedAccountId,
         derivationPath
       );
       setSenderAddress(address);
       setSenderPK(publicKey);
 
-      const balance = await BTC.getBalance({ address });
+      const balance = await BTC2.getBalance( address );
       setStatus(
         `Your Bitcoin address is: ${address}, balance: ${balance} satoshi`
       );
@@ -69,37 +94,34 @@ export function BitcoinView({ props: { setStatus } }) {
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { psbt, utxos } = await BTC.createTransaction({
-      from: senderAddress,
-      to: receiver,
-      amount,
-      path: derivationPath,
-      wallet,
-    });
-
-    sessionStorage.setItem(
-      "btc_transaction",
-      JSON.stringify({
+    const {transaction,mpcPayloads} = await BTC2.getMPCPayloadAndTransaction({
+        publicKey: senderPK,
         from: senderAddress,
         to: receiver,
-        amount,
-        utxos,
-        publicKey: senderPK
-      })
-    );
+        value: amount
+      });
+      setUnsignedTransaction(transaction)
 
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while..."
     );
 
     try {
-      const signedTransaction = await BTC.requestSignatureToMPC({
-        psbt,
-        utxos,
-        publicKey: senderPK,
-        path: derivationPath,
-        wallet,
-      });
+      
+        const signedTransaction = await wallet.callMethod({
+          contractId: MPC_CONTRACT,
+          method: "sign",
+          args: {
+            request: {
+              payload: Array.from(mpcPayloads[0].payload),
+              path: derivationPath,
+              key_version: 0,
+            },
+          },
+          gas: "250000000000000", // 250 Tgas
+          deposit: 1,
+        });
+  
       setStatus("✅ Signed payload ready to be relayed to the Bitcoin network");
       setSignedTransaction(signedTransaction);
       setStep("relay");
@@ -117,11 +139,15 @@ export function BitcoinView({ props: { setStatus } }) {
     );
 
     try {
-      const txHash = await BTC.broadcastTX(signedTransaction);
+      const txHash = await BTC2.addSignatureAndBroadcast({
+        transaction:unsignedTransaction,
+        mpcSignatures: [signedTransaction]
+      });
+  
       setStatus(
         <>
           <a
-            href={`https://blockstream.info/testnet/tx/${txHash}`}
+            href={`https://mempool.space/es/testnet4/tx/${txHash}`}
             target="_blank"
           >
             {" "}
