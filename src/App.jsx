@@ -13,7 +13,7 @@ const wallet = new Wallet({ network: 'testnet' });
 function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('eth');
+  const [chain, setChain] = useState('btc');
 
   useEffect(() => {
     wallet.startUp(setSignedAccountId);

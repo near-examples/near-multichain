@@ -37,6 +37,7 @@
     "react-dom": "^18.2.0",
     "rxjs": "^7.8.1",
     "secp256k1": "3.4.0",
+    "signet.js": "^0.0.1",
     "viem": "^2.18.4",
     "vite-plugin-node-polyfills": "^0.21.0",
     "web3": "^4.6.0"

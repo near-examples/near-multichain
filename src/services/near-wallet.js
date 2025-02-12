@@ -141,4 +141,16 @@ export class Wallet {
     const transaction = await provider.txStatus(txhash, 'unnused');
     return providers.getTransactionLastResult(transaction);
   };
+
+
+  /**
+   * Signs and sends transactions
+   * @param {Object[]} transactions - the transactions to sign and send
+   * @returns {Promise<Transaction[]>} - the resulting transactions
+   *
+   */
+  signAndSendTransactions = async ({ transactions }) => {
+    const selectedWallet = await (await this.selector).wallet();
+    return selectedWallet.signAndSendTransactions({ transactions });
+  };
 }
