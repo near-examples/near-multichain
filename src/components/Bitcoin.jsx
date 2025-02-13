@@ -4,30 +4,21 @@ import { providers } from 'near-api-js';
 
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
-import { MPC_CONTRACT, MPC_KEY } from "../services/kdf/mpc";
 import { Bitcoin as SignetBTC, BTCRpcAdapters } from 'signet.js'
 import { KeyPair } from '@near-js/crypto'
-import { utils } from 'signet.js'
-
-
-const toRSV = (signature) => {
-  return {
-    r: signature.big_r.affine_point.substring(2),
-    s: signature.s.scalar,
-    v: signature.recovery_id,
-  }
-}
+import { utils } from "signet.js";
+import { toRSV } from "signet.js/src/chains/utils";
+import { MPC_CONTRACT, NetworkId } from "../config";
 
 const contract = new utils.chains.near.contract.NearChainSignatureContract({
-  networkId: 'testnet',
+  networkId: NetworkId,
   contractId: MPC_CONTRACT,
-  accountId: 'maguila.testnet',
-  keypair: KeyPair.fromString("ed25519:qFRpqZVScxs1D6UDFbcuNNFzV7SFqGWPrU381XC3mT1QVySZyKtdRdwMwFSGwdHQ8iV9i7a9Na9KipipDdsHhQw"),
+  keypair: KeyPair.fromRandom('ed25519'),
 })
 
 const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
 const Bitcoin = new SignetBTC({
-  network: 'testnet',
+  network: NetworkId,
   contract,
   btcRpcAdapter,
 })
@@ -110,39 +101,10 @@ export function BitcoinView({ props: { setStatus } }) {
           ],
         })
       )
-      // // Bitcoin.setTransaction
  
       const sentTxs = await wallet.signAndSendTransactions({ transactions: mpcTransactions });
-      const mpcSignatures = await Promise.all(sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx))))
-      // console.log('mpcSignatures', mpcSignatures);
-      // signWithRelayer
+      const mpcSignatures = sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx)))
 
-      // const mpcSignatures = await Promise.all(mpcPayloads.map(({ payload }) => contract.sign({
-      //   payload: Array.from(payload),
-      //   path: derivationPath,
-      //   key_version: 0,
-      // })))
-   
-      // contract.sign({
-      //   payload: Array.from(mpcPayloads[0].payload),
-      //   path: derivationPath,
-      //   key_version: 0,
-      // })
-      // const trans = await wallet.callMethod({
-      //   contractId: MPC_CONTRACT,
-      //   method: "sign",
-      //   args: {
-      //     request: {
-      //       payload: Array.from(mpcPayloads[0].payload),
-      //       path: derivationPath,
-      //       key_version: 0,
-      //     },
-      //   },
-      //   gas: "250000000000000", // 250 Tgas
-      //   deposit: 1,
-      // });
-      // console.log({trans,mpcPayloads});
-      console.log({ mpcSignatures });
       const signedTransaction = Bitcoin.addSignature({
         transaction,
         mpcSignatures

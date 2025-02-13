@@ -22,20 +22,6 @@ export const fetchJson = async (url, params = {}, noWarnings = false) => {
   }
 };
 
-export const convertBitcoin = (value, toUnit) => {
-  if (toUnit === "btc") {
-    // Convert satoshis to bitcoins and return as a string with fixed precision
-    return (value / 100000000).toFixed(8).toString();
-  } else if (toUnit === "sats") {
-    // Convert bitcoins to satoshis and return as a string
-    return (value * 100000000).toString();
-  } else {
-    throw new Error(
-      'Invalid unit specified. Use "btc" for bitcoins or "sats" for satoshis.'
-    );
-  }
-};
-
 // Helper function to pause execution for a given number of milliseconds
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

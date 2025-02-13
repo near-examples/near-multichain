@@ -5,9 +5,8 @@ import { NearContext } from "../../context";
 import { useDebounce } from "../../hooks/debounce";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-// import { EthereumVM } from "../../services/evm";
 import { EVM, utils } from "signet.js";
-import { MPC_CONTRACT } from "../../services/kdf/mpc";
+import { MPC_CONTRACT } from "../../services/mpc";
 import { KeyPair } from "@near-js/crypto";
 import { JsonRpcProvider } from "ethers";
 import Web3 from "web3";
@@ -33,9 +32,6 @@ const toRSV = (signature) => {
     v: signature.recovery_id,
   }
 }
-
-
-// const Evm = new EthereumVM("https://base-sepolia.drpc.org");
 
 const contractAddress = "0xCd3b988b216790C598d9AB85Eee189e446CE526D";
 

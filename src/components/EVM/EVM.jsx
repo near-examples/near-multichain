@@ -5,27 +5,18 @@ import { NearContext } from "../../context";
 import { useDebounce } from "../../hooks/debounce";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { MPC_CONTRACT } from "../../services/kdf/mpc";
-// import { EVM } from "multichain-tools";
-import { EVM,utils } from 'signet.js' 
-import { JsonRpcProvider } from "ethers";
+import { EVM, utils } from 'signet.js'
+// import { JsonRpcProvider } from "ethers";
 import Web3 from "web3";
 import { KeyPair } from "@near-js/crypto";
+import { MPC_CONTRACT, NetworkId } from "../../config";
 
-// 0.01341133284533 ETH
-
-const web3 = new Web3("https://sepolia.drpc.org");
 
 const contract = new utils.chains.near.contract.NearChainSignatureContract({
-  networkId: 'testnet',
+  networkId: NetworkId,
   contractId: MPC_CONTRACT,
-  accountId: 'maguila.testnet',
-  keypair: KeyPair.fromString("ed25519:qFRpqZVScxs1D6UDFbcuNNFzV7SFqGWPrU381XC3mT1QVySZyKtdRdwMwFSGwdHQ8iV9i7a9Na9KipipDdsHhQw"),
-})
-
-const Evm = new EVM({
-  rpcUrl: 'https://sepolia.drpc.org',
-  contract,
+  accountId: '',
+  keypair: KeyPair.fromRandom("ed25519"),
 })
 
 const toRSV = (signature) => {
@@ -37,20 +28,11 @@ const toRSV = (signature) => {
 }
 
 
-// const Evm = new EVM({
-//   providerUrl: "https://sepolia.drpc.org",
-//   nearNetworkId: "testnet",
-//   contract: MPC_CONTRACT,
-// });
-
-const provider = new JsonRpcProvider("https://sepolia.drpc.org");
-
-export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
+export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
-  const [unsignedTransaction, setUnsignedTransaction] = useState(null);
   const [senderLabel, setSenderLabel] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [balance, setBalance] = useState(""); // Add balance state
@@ -65,6 +47,13 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
 
   const derivationPath = useDebounce(derivation, 1200);
   const childRef = useRef();
+
+  const web3 = new Web3(rpcUrl);
+  const Evm = new EVM({
+    rpcUrl,
+    contract,
+  })
+
   useEffect(() => {
     async function fetchEthereumGasPrice() {
       try {
@@ -120,11 +109,11 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
     );
     setSenderAddress(address);
     setSenderLabel(address);
-    const balanceInWei = await provider.getBalance(address)
-    const balance = Web3.utils.fromWei(balanceInWei, 'ether');
+    const balance = await Evm.getBalance(address)
+    // const balance = Web3.utils.fromWei(balanceInWei, 'ether');
     setBalance(balance); // Update balance state
   };
-  
+
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
@@ -132,7 +121,6 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       await childRef.current.createTransaction();
 
     Evm.setTransaction(transaction, "evm_transaction");
-    setUnsignedTransaction(transaction);
 
     setStatus(
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
@@ -158,7 +146,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       });
 
       const signedTransaction = Evm.addSignature({
-        transaction: unsignedTransaction,
+        transaction: transaction,
         mpcSignatures: [toRSV(signature)],
       });
       setSignedTransaction(signedTransaction);
@@ -183,7 +171,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       const txHash = await Evm.broadcastTx(signedTransaction);
       setStatus(
         <>
-          <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank">
+          <a href={`${explorerUrl}/${txHash}`} target="_blank">
             {" "}
             ✅ Successful{" "}
           </a>
@@ -269,7 +257,7 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ Evm, senderAddress, loading }}
+          props={{ Evm, contractAddress, senderAddress, loading }}
         />
       )}
 
@@ -324,9 +312,12 @@ export function EthereumView({ props: { setStatus, MPC_CONTRACT } }) {
   );
 }
 
-EthereumView.propTypes = {
+EVMView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
+    rpcUrl: PropTypes.string.isRequired,
+    contractAddress: PropTypes.string.isRequired,
+    explorerUrl: PropTypes.string.isRequired,
   }).isRequired,
 };

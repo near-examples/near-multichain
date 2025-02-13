@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react';
 import { NearContext } from './context';
 import { Wallet } from './services/near-wallet';
 import Navbar from './components/Navbar';
-import { EthereumView } from './components/EVM/Ethereum';
-import { BaseView } from './components/EVM/Base';
+import { EVMView } from './components/EVM/EVM';
 import { BitcoinView } from './components/Bitcoin';
-import { MPC_CONTRACT } from './services/kdf/mpc';
+import { explorerForChain, MPC_CONTRACT, NetworkId, RPCforChain } from './config';
 
 // NEAR WALLET CONNECTION
-const wallet = new Wallet({ network: 'testnet' });
+const wallet = new Wallet({ network: NetworkId });
 
 function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
@@ -24,10 +23,10 @@ function App() {
       <Navbar />
       <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-75'>
         <div className='alert alert-light w-auto text-center'>
-         One account controlling endless number of accounts across chains. 🚀
+          One account controlling endless number of accounts across chains. 🚀
           <br />
           <small className='text-muted'>
-            Powered by 👉 {' '} 
+            Powered by 👉 {' '}
             <a
               href='https://docs.near.org/concepts/abstraction/chain-signatures'
               className='text-primary'
@@ -74,11 +73,14 @@ function App() {
                 </select>
               </div>
 
-              {chain === 'eth' && (
-                <EthereumView props={{ setStatus, MPC_CONTRACT }} />
-              )}
-              {chain === 'base' && (
-                <BaseView props={{ setStatus, MPC_CONTRACT }} />
+              {(chain === 'eth' || chain === 'base') && (
+                <EVMView props={{
+                  setStatus,
+                  MPC_CONTRACT,
+                  rpcUrl: RPCforChain[chain],
+                  explorerUrl: explorerForChain[chain],
+                  contractAddress: chain === 'base' ? "0xCd3b988b216790C598d9AB85Eee189e446CE526D" : "0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3"
+                }} />
               )}
               {chain === 'btc' && (
                 <BitcoinView props={{ setStatus, MPC_CONTRACT }} />
