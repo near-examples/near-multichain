@@ -7,13 +7,22 @@ import PropTypes from "prop-types";
 import { MPC_CONTRACT, MPC_KEY } from "../services/kdf/mpc";
 import { Bitcoin as SignetBTC, BTCRpcAdapters } from 'signet.js'
 import { KeyPair } from '@near-js/crypto'
-import { utils as utilsSignet } from 'signet.js'
+import { utils } from 'signet.js'
 
-const contract = new utilsSignet.chains.near.contract.NearChainSignatureContract({
+
+const toRSV = (signature) => {
+  return {
+    r: signature.big_r.affine_point.substring(2),
+    s: signature.s.scalar,
+    v: signature.recovery_id,
+  }
+}
+
+const contract = new utils.chains.near.contract.NearChainSignatureContract({
   networkId: 'testnet',
-  contractId: 'v1.signer-prod.testnet',
-  accountId: '',
-  keypair: KeyPair.fromString(MPC_KEY),
+  contractId: MPC_CONTRACT,
+  accountId: 'maguila.testnet',
+  keypair: KeyPair.fromString("ed25519:qFRpqZVScxs1D6UDFbcuNNFzV7SFqGWPrU381XC3mT1QVySZyKtdRdwMwFSGwdHQ8iV9i7a9Na9KipipDdsHhQw"),
 })
 
 const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
@@ -24,9 +33,9 @@ const Bitcoin = new SignetBTC({
 })
 
 export function BitcoinView({ props: { setStatus } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+  const { wallet ,signedAccountId } = useContext(NearContext);
 
-  const [receiver, setReceiver] = useState("tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5");
+  const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
@@ -101,10 +110,39 @@ export function BitcoinView({ props: { setStatus } }) {
           ],
         })
       )
-
+      // // Bitcoin.setTransaction
+ 
       const sentTxs = await wallet.signAndSendTransactions({ transactions: mpcTransactions });
-      const mpcSignatures = await Promise.all(sentTxs.map(tx => providers.getTransactionLastResult(tx)))
-      console.log(mpcSignatures)
+      const mpcSignatures = await Promise.all(sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx))))
+      // console.log('mpcSignatures', mpcSignatures);
+      // signWithRelayer
+
+      // const mpcSignatures = await Promise.all(mpcPayloads.map(({ payload }) => contract.sign({
+      //   payload: Array.from(payload),
+      //   path: derivationPath,
+      //   key_version: 0,
+      // })))
+   
+      // contract.sign({
+      //   payload: Array.from(mpcPayloads[0].payload),
+      //   path: derivationPath,
+      //   key_version: 0,
+      // })
+      // const trans = await wallet.callMethod({
+      //   contractId: MPC_CONTRACT,
+      //   method: "sign",
+      //   args: {
+      //     request: {
+      //       payload: Array.from(mpcPayloads[0].payload),
+      //       path: derivationPath,
+      //       key_version: 0,
+      //     },
+      //   },
+      //   gas: "250000000000000", // 250 Tgas
+      //   deposit: 1,
+      // });
+      // console.log({trans,mpcPayloads});
+      console.log({ mpcSignatures });
       const signedTransaction = Bitcoin.addSignature({
         transaction,
         mpcSignatures
@@ -158,6 +196,19 @@ export function BitcoinView({ props: { setStatus } }) {
 
   return (
     <>
+      <div className="alert alert-info text-center" role="alert">
+        You are working with <strong>Testnet 4</strong>.
+        <br />
+        You can get funds from the faucet:
+        <a
+          href="https://mempool.space/testnet4/faucet"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="alert-link"
+        >
+          mempool.space/testnet4/mining
+        </a>
+      </div>
       <div className="row my-3">
         <label className="col-sm-2 col-form-label col-form-label-sm">
           Path:
