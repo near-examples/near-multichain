@@ -1,25 +1,20 @@
-import { useEffect, useState } from 'react';
-import { NearContext } from './context';
-import { Wallet } from './services/near-wallet';
+import { useState } from 'react';
+
 import Navbar from './components/Navbar';
 import { EVMView } from './components/EVM/EVM';
 import { BitcoinView } from './components/Bitcoin';
-import { explorerForChain, MPC_CONTRACT, NetworkId, RPCforChain } from './config';
+import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
+import { useWalletSelector } from '@near-wallet-selector/react-hook';
 
-// NEAR WALLET CONNECTION
-const wallet = new Wallet({ network: NetworkId });
 
 function App() {
-  const [signedAccountId, setSignedAccountId] = useState('');
+  const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
   const [chain, setChain] = useState('eth');
 
-  useEffect(() => {
-    wallet.startUp(setSignedAccountId);
-  }, []);
 
   return (
-    <NearContext.Provider value={{ wallet, signedAccountId }}>
+    <>
       <Navbar />
       <div className='container text-light d-flex flex-column justify-content-center align-items-center vh-75'>
         <div className='alert alert-light w-auto text-center'>
@@ -104,7 +99,7 @@ function App() {
           </ul>
         </div> */}
       </div>
-    </NearContext.Provider>
+    </>
   );
 }
 

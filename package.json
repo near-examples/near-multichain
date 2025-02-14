@@ -19,6 +19,7 @@
     "@near-wallet-selector/meteor-wallet": "^8.9.13",
     "@near-wallet-selector/modal-ui": "^8.9.13",
     "@near-wallet-selector/my-near-wallet": "^8.9.13",
+    "@near-wallet-selector/react-hook": "^8.9.15",
     "@vitejs/plugin-react": "^4.2.1",
     "axios": "^1.6.8",
     "bech32": "^2.0.0",

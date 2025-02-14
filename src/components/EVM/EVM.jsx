@@ -1,7 +1,6 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 
-import { NearContext } from "../../context";
 import { useDebounce } from "../../hooks/debounce";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
@@ -9,9 +8,10 @@ import { EVM } from 'signet.js'
 import Web3 from "web3";
 
 import { CONTRACT } from "../../config";
+import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
 export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+  const { wallet, signedAccountId } = useWalletSelector();
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");

@@ -1,5 +1,4 @@
-import { useState, useEffect, useContext } from "react";
-import { NearContext } from "../context";
+import { useState, useEffect } from "react";
 import { providers } from 'near-api-js';
 
 import { useDebounce } from "../hooks/debounce";
@@ -7,6 +6,7 @@ import PropTypes from "prop-types";
 import { Bitcoin as SignetBTC, BTCRpcAdapters } from 'signet.js'
 import { toRSV } from "signet.js/src/chains/utils";
 import { CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
+import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
 const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
 const Bitcoin = new SignetBTC({
@@ -16,7 +16,7 @@ const Bitcoin = new SignetBTC({
 })
 
 export function BitcoinView({ props: { setStatus } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+  const { wallet, signedAccountId } = useWalletSelector();
 
   const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
