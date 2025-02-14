@@ -19,9 +19,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
   const [senderAddress, setSenderAddress] = useState("");
   const [balance, setBalance] = useState(""); // Add balance state
   const [action, setAction] = useState("transfer");
-  const [derivation, setDerivation] = useState(
-    sessionStorage.getItem("derivation") || "ethereum-1"
-  );
+  const [derivation, setDerivation] = useState("ethereum-1");
   const [signedTransaction, setSignedTransaction] = useState(null)
 
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
