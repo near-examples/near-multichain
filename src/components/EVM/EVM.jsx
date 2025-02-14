@@ -4,13 +4,16 @@ import PropTypes from "prop-types";
 import { useDebounce } from "../../hooks/debounce";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { EVM } from 'signet.js'
+import { EVM } from "signet.js";
 import Web3 from "web3";
+import { toRSV } from "signet.js/src/chains/utils";
 
 import { CONTRACT } from "../../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
-export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl } }) {
+export function EVMView({
+  props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl },
+}) {
   const { callFunction, signedAccountId } = useWalletSelector();
 
   const [loading, setLoading] = useState(false);
@@ -20,7 +23,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
   const [balance, setBalance] = useState(""); // Add balance state
   const [action, setAction] = useState("transfer");
   const [derivation, setDerivation] = useState("ethereum-1");
-  const [signedTransaction, setSignedTransaction] = useState(null)
+  const [signedTransaction, setSignedTransaction] = useState(null);
 
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
   const [txCost, setTxCost] = useState("");
@@ -32,7 +35,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
   const Evm = new EVM({
     rpcUrl,
     contract: CONTRACT,
-  })
+  });
 
   useEffect(() => {
     async function fetchEthereumGasPrice() {
@@ -89,7 +92,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
     );
     setSenderAddress(address);
     setSenderLabel(address);
-    const balance = await Evm.getBalance(address)
+    const balance = await Evm.getBalance(address);
 
     setBalance(balance); // Update balance state
   };
@@ -104,13 +107,14 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
     );
     try {
-
       const signature = await callFunction({
         contractId: MPC_CONTRACT,
         method: "sign",
         args: {
           request: {
-            payload: mpcPayloads ? Array.from(mpcPayloads[0].payload) : Array.from(transaction.getHashedMessageToSign()),
+            payload: mpcPayloads
+              ? Array.from(mpcPayloads[0].payload)
+              : Array.from(transaction.getHashedMessageToSign()),
             path: derivationPath,
             key_version: 0,
           },
@@ -119,7 +123,12 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
         deposit: 1,
       });
 
-      setSignedTransaction(childRef.current.signedTransaction(signature, transaction));
+      setSignedTransaction(
+        Evm.addSignature({
+          transaction: transaction,
+          mpcSignatures: [toRSV(signature)],
+        })
+      );
 
       setStatus(
         `✅ Signed payload ready to be relayed to the Ethereum network`
@@ -227,7 +236,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ contractAddress, senderAddress, rpcUrl, web3, loading,Evm }}
+          props={{ contractAddress, senderAddress, rpcUrl, web3, loading, Evm }}
         />
       )}
 
