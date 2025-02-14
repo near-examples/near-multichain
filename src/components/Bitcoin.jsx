@@ -16,7 +16,7 @@ const Bitcoin = new SignetBTC({
 })
 
 export function BitcoinView({ props: { setStatus } }) {
-  const { wallet, signedAccountId } = useWalletSelector();
+  const { signAndSendTransactions, signedAccountId } = useWalletSelector();
 
   const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
@@ -94,7 +94,7 @@ export function BitcoinView({ props: { setStatus } }) {
         })
       )
 
-      const sentTxs = await wallet.signAndSendTransactions({ transactions: mpcTransactions });
+      const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
       const mpcSignatures = sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx)))
 
       const signedTransaction = Bitcoin.addSignature({

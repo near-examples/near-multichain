@@ -11,7 +11,7 @@ import { CONTRACT } from "../../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
 export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl } }) {
-  const { wallet, signedAccountId } = useWalletSelector();
+  const { callFunction, signedAccountId } = useWalletSelector();
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
@@ -105,7 +105,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
     );
     try {
 
-      const signature = await wallet.callMethod({
+      const signature = await callFunction({
         contractId: MPC_CONTRACT,
         method: "sign",
         args: {
@@ -227,7 +227,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ contractAddress, senderAddress, rpcUrl, web3, loading }}
+          props={{ contractAddress, senderAddress, rpcUrl, web3, loading,Evm }}
         />
       )}
 
