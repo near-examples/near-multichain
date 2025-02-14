@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
 import Web3 from "web3";
+import { toRSV } from "signet.js/src/chains/utils";
 
 export const TransferForm = forwardRef(
   ({ props: { Evm, senderAddress, loading } }, ref) => {
@@ -21,7 +22,13 @@ export const TransferForm = forwardRef(
           value: Web3.utils.toWei(amount, "ether"),
         });
       },
-      async afterRelay() {},
+      signedTransaction(signature, transaction) {
+        return Evm.addSignature({
+          transaction: transaction,
+          mpcSignatures: [toRSV(signature)],
+        });
+      },
+      async afterRelay() { },
     }));
 
     return (
@@ -74,6 +81,7 @@ TransferForm.propTypes = {
     loading: PropTypes.bool.isRequired,
     Evm: PropTypes.shape({
       getMPCPayloadAndTransaction: PropTypes.func.isRequired,
+      addSignature: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };

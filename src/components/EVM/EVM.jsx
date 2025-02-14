@@ -5,28 +5,10 @@ import { NearContext } from "../../context";
 import { useDebounce } from "../../hooks/debounce";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { EVM, utils } from 'signet.js'
-// import { JsonRpcProvider } from "ethers";
+import { EVM } from 'signet.js'
 import Web3 from "web3";
-import { KeyPair } from "@near-js/crypto";
-import { MPC_CONTRACT, NetworkId } from "../../config";
 
-
-const contract = new utils.chains.near.contract.NearChainSignatureContract({
-  networkId: NetworkId,
-  contractId: MPC_CONTRACT,
-  accountId: '',
-  keypair: KeyPair.fromRandom("ed25519"),
-})
-
-const toRSV = (signature) => {
-  return {
-    r: signature.big_r.affine_point.substring(2),
-    s: signature.s.scalar,
-    v: signature.recovery_id,
-  }
-}
-
+import { CONTRACT } from "../../config";
 
 export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl } }) {
   const { wallet, signedAccountId } = useContext(NearContext);
@@ -51,7 +33,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
   const web3 = new Web3(rpcUrl);
   const Evm = new EVM({
     rpcUrl,
-    contract,
+    contract: CONTRACT,
   })
 
   useEffect(() => {
@@ -110,7 +92,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
     setSenderAddress(address);
     setSenderLabel(address);
     const balance = await Evm.getBalance(address)
-    // const balance = Web3.utils.fromWei(balanceInWei, 'ether');
+
     setBalance(balance); // Update balance state
   };
 
@@ -120,23 +102,17 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
     const { transaction, mpcPayloads } =
       await childRef.current.createTransaction();
 
-    Evm.setTransaction(transaction, "evm_transaction");
-
     setStatus(
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
     );
     try {
-      // to reconstruct on reload
-      sessionStorage.setItem("derivation", derivationPath);
 
-      // even tough ChainSignaturesContract.sign() is out there
-      // we can't use it here because FullAcess key pair can't be retrieved directly from WalletSelector
       const signature = await wallet.callMethod({
         contractId: MPC_CONTRACT,
         method: "sign",
         args: {
           request: {
-            payload: Array.from(mpcPayloads[0].payload),
+            payload: mpcPayloads ? Array.from(mpcPayloads[0].payload) : Array.from(transaction.getHashedMessageToSign()),
             path: derivationPath,
             key_version: 0,
           },
@@ -145,11 +121,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
         deposit: 1,
       });
 
-      const signedTransaction = Evm.addSignature({
-        transaction: transaction,
-        mpcSignatures: [toRSV(signature)],
-      });
-      setSignedTransaction(signedTransaction);
+      setSignedTransaction(childRef.current.signedTransaction(signature, transaction));
 
       setStatus(
         `✅ Signed payload ready to be relayed to the Ethereum network`
@@ -257,7 +229,7 @@ export function EVMView({ props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddr
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ Evm, contractAddress, senderAddress, loading }}
+          props={{ contractAddress, senderAddress, rpcUrl, web3, loading }}
         />
       )}
 

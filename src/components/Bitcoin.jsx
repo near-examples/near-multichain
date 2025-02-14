@@ -5,26 +5,18 @@ import { providers } from 'near-api-js';
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
 import { Bitcoin as SignetBTC, BTCRpcAdapters } from 'signet.js'
-import { KeyPair } from '@near-js/crypto'
-import { utils } from "signet.js";
 import { toRSV } from "signet.js/src/chains/utils";
-import { MPC_CONTRACT, NetworkId } from "../config";
-
-const contract = new utils.chains.near.contract.NearChainSignatureContract({
-  networkId: NetworkId,
-  contractId: MPC_CONTRACT,
-  keypair: KeyPair.fromRandom('ed25519'),
-})
+import { CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
 
 const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
 const Bitcoin = new SignetBTC({
   network: NetworkId,
-  contract,
+  contract: CONTRACT,
   btcRpcAdapter,
 })
 
 export function BitcoinView({ props: { setStatus } }) {
-  const { wallet ,signedAccountId } = useContext(NearContext);
+  const { wallet, signedAccountId } = useContext(NearContext);
 
   const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
@@ -101,7 +93,7 @@ export function BitcoinView({ props: { setStatus } }) {
           ],
         })
       )
- 
+
       const sentTxs = await wallet.signAndSendTransactions({ transactions: mpcTransactions });
       const mpcSignatures = sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx)))
 

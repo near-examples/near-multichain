@@ -12,7 +12,7 @@ const wallet = new Wallet({ network: NetworkId });
 function App() {
   const [signedAccountId, setSignedAccountId] = useState('');
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('base');
+  const [chain, setChain] = useState('eth');
 
   useEffect(() => {
     wallet.startUp(setSignedAccountId);
@@ -74,7 +74,7 @@ function App() {
               </div>
 
               {(chain === 'eth' || chain === 'base') && (
-                <EVMView props={{
+                <EVMView key={chain} props={{
                   setStatus,
                   MPC_CONTRACT,
                   rpcUrl: RPCforChain[chain],
