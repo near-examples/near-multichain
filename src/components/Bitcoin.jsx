@@ -1,45 +1,33 @@
-import { useState, useEffect, useContext } from "react";
-import { NearContext } from "../context";
+import { useState, useEffect } from "react";
+import { providers } from 'near-api-js';
 
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
-import { Bitcoin } from "../services/bitcoin";
-import { getTransactionHashes } from "../services/utils";
+import { Bitcoin as SignetBTC, BTCRpcAdapters } from 'signet.js'
+import { toRSV } from "signet.js/src/chains/utils";
+import { CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
+import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
-const BTC = new Bitcoin("testnet");
-
-const transactions = getTransactionHashes();
+const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
+const Bitcoin = new SignetBTC({
+  network: NetworkId,
+  contract: CONTRACT,
+  btcRpcAdapter,
+})
 
 export function BitcoinView({ props: { setStatus } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+  const { signAndSendTransactions, signedAccountId } = useWalletSelector();
 
-  const [receiver, setReceiver] = useState(
-    "tb1q86ec0aszet5r3qt02j77f3dvxruk7tuqdlj0d5"
-  );
+  const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(transactions.length ? "relay" : "request");
+  const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
   const [senderPK, setSenderPK] = useState("");
 
   const [derivation, setDerivation] = useState("bitcoin-1");
   const derivationPath = useDebounce(derivation, 500);
-
-  const getSignedTx = async () => {
-    const signature = await wallet.getTransactionResult(transactions[0]);
-
-    const signedTransaction = await BTC.reconstructSignedTransactionFromSessionStorage(signature);
-
-    setSignedTransaction(signedTransaction);
-    removeUrlParams();
-  };
-
-  useEffect(() => {
-    if (transactions.length === 0) return;
-    
-    getSignedTx();
-  }, []);
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
@@ -52,16 +40,18 @@ export function BitcoinView({ props: { setStatus } }) {
       setStatus("Querying your address and balance");
       setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
-      const { address, publicKey } = await BTC.deriveAddress(
+      const { address, publicKey } = await Bitcoin.deriveAddressAndPublicKey(
         signedAccountId,
         derivationPath
       );
       setSenderAddress(address);
       setSenderPK(publicKey);
 
-      const balance = await BTC.getBalance({ address });
+      const btcBalance = await Bitcoin.getBalance(address);
+      const satoshi = SignetBTC.toSatoshi(btcBalance);
+
       setStatus(
-        `Your Bitcoin address is: ${address}, balance: ${balance} satoshi`
+        `Your Bitcoin address is: ${address}, balance: ${satoshi} satoshi`
       );
     }
   }, [signedAccountId, derivationPath, setStatus]);
@@ -69,37 +59,49 @@ export function BitcoinView({ props: { setStatus } }) {
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { psbt, utxos } = await BTC.createTransaction({
+    const { transaction, mpcPayloads } = await Bitcoin.getMPCPayloadAndTransaction({
+      publicKey: senderPK,
       from: senderAddress,
       to: receiver,
-      amount,
-      path: derivationPath,
-      wallet,
+      value: amount
     });
-
-    sessionStorage.setItem(
-      "btc_transaction",
-      JSON.stringify({
-        from: senderAddress,
-        to: receiver,
-        amount,
-        utxos,
-        publicKey: senderPK
-      })
-    );
 
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while..."
     );
 
     try {
-      const signedTransaction = await BTC.requestSignatureToMPC({
-        psbt,
-        utxos,
-        publicKey: senderPK,
-        path: derivationPath,
-        wallet,
+      const mpcTransactions = mpcPayloads.map(
+        ({ payload }) => ({
+          receiverId: MPC_CONTRACT,
+          actions: [
+            {
+              type: 'FunctionCall',
+              params: {
+                methodName: "sign",
+                args: {
+                  request: {
+                    payload: Array.from(payload),
+                    path: derivationPath,
+                    key_version: 0,
+                  },
+                },
+                gas: "250000000000000",
+                deposit: 1,
+              },
+            },
+          ],
+        })
+      )
+
+      const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
+      const mpcSignatures = sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx)))
+
+      const signedTransaction = Bitcoin.addSignature({
+        transaction,
+        mpcSignatures
       });
+
       setStatus("✅ Signed payload ready to be relayed to the Bitcoin network");
       setSignedTransaction(signedTransaction);
       setStep("relay");
@@ -117,11 +119,14 @@ export function BitcoinView({ props: { setStatus } }) {
     );
 
     try {
-      const txHash = await BTC.broadcastTX(signedTransaction);
+
+
+      const txHash = await Bitcoin.broadcastTx(signedTransaction);
+
       setStatus(
         <>
           <a
-            href={`https://blockstream.info/testnet/tx/${txHash}`}
+            href={`https://mempool.space/es/testnet4/tx/${txHash}`}
             target="_blank"
           >
             {" "}
@@ -143,14 +148,21 @@ export function BitcoinView({ props: { setStatus } }) {
     setLoading(false);
   };
 
-  function removeUrlParams() {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("transactionHashes");
-    window.history.replaceState({}, document.title, url);
-  }
-
   return (
     <>
+      <div className="alert alert-info text-center" role="alert">
+        You are working with <strong>Testnet 4</strong>.
+        <br />
+        You can get funds from the faucet:
+        <a
+          href="https://mempool.space/testnet4/faucet"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="alert-link"
+        >
+          mempool.space/testnet4/mining
+        </a>
+      </div>
       <div className="row my-3">
         <label className="col-sm-2 col-form-label col-form-label-sm">
           Path:

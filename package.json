@@ -19,6 +19,7 @@
     "@near-wallet-selector/meteor-wallet": "^8.9.13",
     "@near-wallet-selector/modal-ui": "^8.9.13",
     "@near-wallet-selector/my-near-wallet": "^8.9.13",
+    "@near-wallet-selector/react-hook": "^8.9.15",
     "@vitejs/plugin-react": "^4.2.1",
     "axios": "^1.6.8",
     "bech32": "^2.0.0",
@@ -37,6 +38,7 @@
     "react-dom": "^18.2.0",
     "rxjs": "^7.8.1",
     "secp256k1": "3.4.0",
+    "signet.js": "^0.0.1",
     "viem": "^2.18.4",
     "vite-plugin-node-polyfills": "^0.21.0",
     "web3": "^4.6.0"

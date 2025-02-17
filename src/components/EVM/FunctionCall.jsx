@@ -3,62 +3,24 @@ import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { useImperativeHandle } from "react";
-
-const abi = [
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_num",
-        type: "uint256",
-      },
-    ],
-    name: "set",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "get",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "num",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-];
+import { Contract, JsonRpcProvider } from "ethers";
+import { ABI } from "../../config";
 
 export const FunctionCallForm = forwardRef(
-  ({ props: { Evm, contractAddress, senderAddress, loading } }, ref) => {
+  (
+    { props: { contractAddress, senderAddress, loading, rpcUrl, Evm } },
+    ref
+  ) => {
     const [number, setNumber] = useState(1000);
     const [currentNumber, setCurrentNumber] = useState("");
 
-    async function getNumber() {
-      const result = await Evm.getContractViewFunction(
-        contractAddress,
-        abi,
-        "get"
-      );
+    const provider = new JsonRpcProvider(rpcUrl);
+    const contract = new Contract(contractAddress, ABI, provider);
+
+    const getNumber = async () => {
+      const result = await contract.get();
       setCurrentNumber(String(result));
-    }
+    };
 
     useEffect(() => {
       getNumber();
@@ -66,18 +28,15 @@ export const FunctionCallForm = forwardRef(
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
-        const data = Evm.createTransactionData(contractAddress, abi, "set", [
-          number,
-        ]);
-        const { transaction } = await Evm.createTransaction({
-          sender: senderAddress,
-          receiver: contractAddress,
-          amount: 0,
-          data,
-        });
-        return { transaction };
-      },
+        const data = contract.interface.encodeFunctionData("set", [number]);
 
+        return await Evm.getMPCPayloadAndTransaction({
+          from: senderAddress,
+          to: contractAddress,
+          data,
+          value: BigInt(0),
+        });
+      },
       async afterRelay() {
         getNumber();
       },
@@ -128,10 +87,9 @@ FunctionCallForm.propTypes = {
     senderAddress: PropTypes.string.isRequired,
     contractAddress: PropTypes.string.isRequired,
     loading: PropTypes.bool.isRequired,
+    rpcUrl: PropTypes.string.isRequired,
     Evm: PropTypes.shape({
-      createTransaction: PropTypes.func.isRequired,
-      createTransactionData: PropTypes.func.isRequired,
-      getContractViewFunction: PropTypes.func.isRequired,
+      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };

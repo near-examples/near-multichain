@@ -8,7 +8,7 @@ import Web3 from "web3";
 export const TransferForm = forwardRef(
   ({ props: { Evm, senderAddress, loading } }, ref) => {
     const [receiver, setReceiver] = useState(
-      "0x427F9620Be0fe8Db2d840E2b6145D1CF2975bcaD"
+      "0x72284EceE80A34BbC4c65d8A468B7771552a421b"
     );
     const [amount, setAmount] = useState("0.005");
 
@@ -70,7 +70,7 @@ export const TransferForm = forwardRef(
 
 TransferForm.propTypes = {
   props: PropTypes.shape({
-    senderAddress: PropTypes.string.isRequired,
+    senderAddress: PropTypes.string,
     loading: PropTypes.bool.isRequired,
     Evm: PropTypes.shape({
       getMPCPayloadAndTransaction: PropTypes.func.isRequired,

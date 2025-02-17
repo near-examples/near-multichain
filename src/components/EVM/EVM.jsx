@@ -1,33 +1,29 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 
-import { NearContext } from "../../context";
 import { useDebounce } from "../../hooks/debounce";
-import { getTransactionHashes } from "../../services/utils";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { EthereumVM } from "../../services/evm";
+import { EVM } from "signet.js";
+import Web3 from "web3";
+import { toRSV } from "signet.js/src/chains/utils";
 
-const Evm = new EthereumVM("https://base-sepolia.drpc.org");
+import { CONTRACT } from "../../config";
+import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
-const contractAddress = "0xCd3b988b216790C598d9AB85Eee189e446CE526D";
-
-const transactions = getTransactionHashes();
-
-export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
-  const { wallet, signedAccountId } = useContext(NearContext);
+export function EVMView({
+  props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl },
+}) {
+  const { callFunction, signedAccountId } = useWalletSelector();
 
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(transactions ? "relay" : "request");
-  const [signedTransaction, setSignedTransaction] = useState(null);
+  const [step, setStep] = useState("request");
   const [senderLabel, setSenderLabel] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [balance, setBalance] = useState(""); // Add balance state
   const [action, setAction] = useState("transfer");
-  const [derivation, setDerivation] = useState(
-    sessionStorage.getItem("derivation") || "ethereum-1"
-  );
-  const [reloaded, setReloaded] = useState(transactions.length);
+  const [derivation, setDerivation] = useState("ethereum-1");
+  const [signedTransaction, setSignedTransaction] = useState(null);
 
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
   const [txCost, setTxCost] = useState("");
@@ -35,14 +31,20 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
   const derivationPath = useDebounce(derivation, 1200);
   const childRef = useRef();
 
+  const web3 = new Web3(rpcUrl);
+  const Evm = new EVM({
+    rpcUrl,
+    contract: CONTRACT,
+  });
+
   useEffect(() => {
     async function fetchEthereumGasPrice() {
       try {
         // Fetch gas price in Wei
-        const gasPriceInWei = await Evm.web3.eth.getGasPrice();
+        const gasPriceInWei = await web3.eth.getGasPrice();
 
         // Convert gas price from Wei to Gwei
-        const gasPriceInGwei = Evm.web3.utils.fromWei(gasPriceInWei, "gwei");
+        const gasPriceInGwei = web3.utils.fromWei(gasPriceInWei, "gwei");
 
         // Gas limit for a standard ETH transfer
         const gasLimit = 21000;
@@ -69,35 +71,7 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
     fetchEthereumGasPrice();
   }, []);
 
-  // Handle signing transaction when the page is reloaded and senderAddress is set
-  useEffect(() => {
-    if (reloaded && senderAddress) {
-      signTransaction();
-    }
-
-    async function signTransaction() {
-      const { big_r, s, recovery_id } = await wallet.getTransactionResult(
-        transactions[0]
-      );
-      const signedTransaction = await Evm.reconstructSignedTXFromLocalSession(
-        big_r,
-        s,
-        recovery_id,
-        senderAddress
-      );
-
-      setSignedTransaction(signedTransaction);
-      setStatus(
-        "✅ Signed payload ready to be relayed to the Base network"
-      );
-      setStep("relay");
-
-      setReloaded(false);
-      removeUrlParams();
-    }
-  }, [senderAddress, reloaded, wallet, setStatus]);
-
-  // Handle changes to derivation path and query Base address and balance
+  // Handle changes to derivation path and query Ethereum address and balance
   useEffect(() => {
     resetAddressState();
     fetchEthereumAddress();
@@ -112,46 +86,52 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
   };
 
   const fetchEthereumAddress = async () => {
-    const { address } = await Evm.deriveAddress(
+    const { address } = await Evm.deriveAddressAndPublicKey(
       signedAccountId,
       derivationPath
     );
     setSenderAddress(address);
     setSenderLabel(address);
+    const balance = await Evm.getBalance(address);
 
-    if (!reloaded) {
-      const balance = await Evm.getBalance(address);
-      setBalance(balance); // Update balance state
-    }
+    setBalance(balance); // Update balance state
   };
-  
+
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction } = await childRef.current.createTransaction();
+    const { transaction, mpcPayloads } =
+      await childRef.current.createTransaction();
 
     setStatus(
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
     );
     try {
-      // to reconstruct on reload
-      sessionStorage.setItem("derivation", derivationPath);
-
-      const { big_r, s, recovery_id } = await Evm.requestSignatureToMPC({
-        wallet,
-        path: derivationPath,
-        transaction,
+      const signature = await callFunction({
+        contractId: MPC_CONTRACT,
+        method: "sign",
+        args: {
+          request: {
+            payload: mpcPayloads
+              ? Array.from(mpcPayloads[0].payload)
+              : Array.from(transaction.getHashedMessageToSign()),
+            path: derivationPath,
+            key_version: 0,
+          },
+        },
+        gas: "250000000000000", // 250 Tgas
+        deposit: 1,
       });
-      const signedTransaction = await Evm.reconstructSignedTransaction(
-        big_r,
-        s,
-        recovery_id,
-        transaction
+
+      setSignedTransaction(
+        Evm.addSignature({
+          transaction: transaction,
+          mpcSignatures: [toRSV(signature)],
+        })
       );
 
-      setSignedTransaction(signedTransaction);
       setStatus(
-        `✅ Signed payload ready to be relayed to the Base network`
+        `✅ Signed payload ready to be relayed to the Ethereum network`
       );
       setStep("relay");
     } catch (e) {
@@ -163,14 +143,14 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
   async function relayTransaction() {
     setLoading(true);
     setStatus(
-      "🔗 Relaying transaction to the Base network... this might take a while"
+      "🔗 Relaying transaction to the Ethereum network... this might take a while"
     );
 
     try {
-      const txHash = await Evm.broadcastTX(signedTransaction);
+      const txHash = await Evm.broadcastTx(signedTransaction);
       setStatus(
         <>
-          <a href={`https://base-sepolia.blockscout.com/tx/${txHash}`} target="_blank">
+          <a href={`${explorerUrl}/${txHash}`} target="_blank">
             {" "}
             ✅ Successful{" "}
           </a>
@@ -190,12 +170,6 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
     await chainSignature();
     setLoading(false);
   };
-
-  function removeUrlParams() {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("transactionHashes");
-    window.history.replaceState({}, document.title, url);
-  }
 
   return (
     <>
@@ -262,7 +236,7 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ Evm, contractAddress, senderAddress, loading }}
+          props={{ contractAddress, senderAddress, rpcUrl, web3, loading, Evm }}
         />
       )}
 
@@ -317,9 +291,12 @@ export function BaseView({ props: { setStatus, MPC_CONTRACT } }) {
   );
 }
 
-BaseView.propTypes = {
+EVMView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
     MPC_CONTRACT: PropTypes.string.isRequired,
+    rpcUrl: PropTypes.string.isRequired,
+    contractAddress: PropTypes.string.isRequired,
+    explorerUrl: PropTypes.string.isRequired,
   }).isRequired,
 };
