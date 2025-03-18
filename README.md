@@ -7,8 +7,6 @@
 
 An example on signing and executing transactions across multiple blockchain protocols from one NEAR account
 
-> Currently only available on **testnet**, and should be used to control only `testnet` accounts on other chains
-
 ---
 
 ## Requirements
