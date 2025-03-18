@@ -25,6 +25,6 @@ npm run dev # or yarn dev
 > To use Chain Signatures on mainnet, use these config variables:
 ```javascript
 export const NetworkId = 'mainnet';
-export const MPC_CONTRACT = 'v1.signer'
+export const MPC_CONTRACT = 'v1.signer';
 export const MPC_KEY = 'secp256k1:3tFRbMqmoa6AAALMrEFAYCEoHcqKxeW38YptwowBVBtXK1vo36HDbUWuR6EZmoK4JcH6HDkNMGGqP1ouV7VZUWya';
 ```
