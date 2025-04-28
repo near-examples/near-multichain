@@ -3,8 +3,9 @@ import PropTypes from "prop-types";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
-import useNearContract from "../hooks/useNearContract";
-import { MPC_CONTRACT } from "../config";
+import { SIGNET_CONTRACT, MPC_CONTRACT } from "../config";
+import { chainAdapters } from "chainsig.js";
+import { Connection as SolanaConnection } from '@solana/web3.js'
 
 function uint8ArrayToHex(uint8Array) {
   return Array.from(uint8Array)
@@ -12,9 +13,14 @@ function uint8ArrayToHex(uint8Array) {
     .join('');
 }
 
+const connection = new SolanaConnection("https://api.devnet.solana.com");
+const solana = new chainAdapters.solana.Solana({
+  solanaConnection: connection,
+  contract: SIGNET_CONTRACT
+}) 
+
 export function SolanaView({ props: { setStatus } }) {
   const { callFunction, signedAccountId } = useWalletSelector();
-  const { solana } = useNearContract();
  
   const [receiver, setReceiver] = useState("G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA");
   const [amount, setAmount] = useState(1);
@@ -25,7 +31,6 @@ export function SolanaView({ props: { setStatus } }) {
 
   const [derivation, setDerivation] = useState("solana-1");
   const derivationPath = useDebounce(derivation, 500);
-
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");

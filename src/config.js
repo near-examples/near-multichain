@@ -1,5 +1,6 @@
 import { utils } from "signet.js";
 import { KeyPair } from "@near-js/crypto";
+import { contracts } from "chainsig.js";
 
 export const RPCforChain = {
     'base': "https://base-sepolia.drpc.org",
@@ -20,6 +21,12 @@ export const CONTRACT = new utils.chains.near.contract.NearChainSignatureContrac
   contractId: MPC_CONTRACT,
   accountId: '',
   keypair: KeyPair.fromRandom("ed25519"),
+})
+
+export const SIGNET_CONTRACT = new contracts.near.ChainSignatureContract({
+  networkId: NetworkId,
+  contractId: MPC_CONTRACT,
+  accountId: '',
 })
 
 export const ABI = [
