@@ -10,7 +10,7 @@ import { SIGNET_CONTRACT, MPC_CONTRACT } from "../../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { chainAdapters, utils } from "chainsig.js";
 import { createPublicClient, http } from "viem";
-import { convertBigIntToDecimal } from "../../utils/bigIntToDecimal";
+import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
 
 
 export function EVMView({
@@ -99,7 +99,7 @@ export function EVMView({
     setSenderAddress(address);
     setSenderLabel(address);
     const balance = await Evm.getBalance(address);
-    setBalance(convertBigIntToDecimal(balance.balance,balance.decimals));
+    setBalance(bigIntToDecimal(balance.balance,balance.decimals));
   };
 
   async function chainSignature() {
@@ -156,7 +156,7 @@ export function EVMView({
       const txHash = await Evm.broadcastTx(signedTransaction);
       setStatus(
         <>
-          <a href={`${explorerUrl}/${txHash}`} target="_blank">
+          <a href={`${explorerUrl}${txHash.hash}`} target="_blank">
             {" "}
             ✅ Successful{" "}
           </a>

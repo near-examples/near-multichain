@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { chainAdapters, utils } from "chainsig.js";
-import { convertBigIntToDecimal } from "../utils/bigIntToDecimal";
+import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
 const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
   "https://mempool.space/testnet4/api"
@@ -50,7 +50,7 @@ export function BitcoinView({ props: { setStatus } }) {
 
       const balance = await Bitcoin.getBalance(address);
 
-      const bitcoinBalance = convertBigIntToDecimal(balance.balance, balance.decimals);
+      const bitcoinBalance = bigIntToDecimal(balance.balance, balance.decimals);
 
       const satoshi = chainAdapters.btc.Bitcoin.toSatoshi(bitcoinBalance);
 
@@ -123,7 +123,7 @@ export function BitcoinView({ props: { setStatus } }) {
       setStatus(
         <>
           <a
-            href={`https://mempool.space/es/testnet4/tx/${txHash}`}
+            href={`https://mempool.space/es/testnet4/tx/${txHash.hash}`}
             target="_blank"
           >
             {" "}

@@ -1,4 +1,4 @@
-export const convertBigIntToDecimal = (bigIntValue, decimals) => {
+export const bigIntToDecimal = (bigIntValue, decimals) => {
     let strValue = bigIntValue.toString();
     
     if (strValue.length <= decimals) {
