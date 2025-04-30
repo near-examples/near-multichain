@@ -4,15 +4,17 @@ import PropTypes from "prop-types";
 import { useDebounce } from "../../hooks/debounce";
 import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
-import { EVM } from "signet.js";
 import Web3 from "web3";
-import { toRSV } from "signet.js/src/chains/utils";
 
-import { CONTRACT } from "../../config";
+import { SIGNET_CONTRACT, MPC_CONTRACT } from "../../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { chainAdapters, utils } from "chainsig.js";
+import { createPublicClient, http } from "viem";
+import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
+
 
 export function EVMView({
-  props: { setStatus, MPC_CONTRACT, rpcUrl, contractAddress, explorerUrl },
+  props: { setStatus, rpcUrl, contractAddress, explorerUrl },
 }) {
   const { callFunction, signedAccountId } = useWalletSelector();
 
@@ -30,12 +32,16 @@ export function EVMView({
 
   const derivationPath = useDebounce(derivation, 1200);
   const childRef = useRef();
-
   const web3 = new Web3(rpcUrl);
-  const Evm = new EVM({
-    rpcUrl,
-    contract: CONTRACT,
+
+  const publicClient = createPublicClient({
+    transport: http(rpcUrl),
   });
+
+  const Evm = new chainAdapters.evm.EVM({
+    publicClient,
+    contract: SIGNET_CONTRACT,
+  })
 
   useEffect(() => {
     async function fetchEthereumGasPrice() {
@@ -93,28 +99,26 @@ export function EVMView({
     setSenderAddress(address);
     setSenderLabel(address);
     const balance = await Evm.getBalance(address);
-
-    setBalance(balance); // Update balance state
+    setBalance(bigIntToDecimal(balance.balance,balance.decimals));
   };
 
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction, mpcPayloads } =
-      await childRef.current.createTransaction();
+
+    const { transaction, hashesToSign } = await childRef.current.createTransaction();
 
     setStatus(
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
     );
+  
     try {
       const signature = await callFunction({
         contractId: MPC_CONTRACT,
         method: "sign",
         args: {
           request: {
-            payload: mpcPayloads
-              ? Array.from(mpcPayloads[0].payload)
-              : Array.from(transaction.getHashedMessageToSign()),
+            payload: hashesToSign[0],
             path: derivationPath,
             key_version: 0,
           },
@@ -122,11 +126,11 @@ export function EVMView({
         gas: "250000000000000", // 250 Tgas
         deposit: 1,
       });
-
+      
       setSignedTransaction(
-        Evm.addSignature({
+        Evm.finalizeTransactionSigning({
           transaction: transaction,
-          mpcSignatures: [toRSV(signature)],
+          rsvSignatures: [utils.cryptography.toRSV(signature)],
         })
       );
 
@@ -135,6 +139,8 @@ export function EVMView({
       );
       setStep("relay");
     } catch (e) {
+      console.trace(e);
+      
       setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
     }
@@ -150,7 +156,7 @@ export function EVMView({
       const txHash = await Evm.broadcastTx(signedTransaction);
       setStatus(
         <>
-          <a href={`${explorerUrl}/${txHash}`} target="_blank">
+          <a href={`${explorerUrl}${txHash.hash}`} target="_blank">
             {" "}
             ✅ Successful{" "}
           </a>
@@ -294,7 +300,6 @@ export function EVMView({
 EVMView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    MPC_CONTRACT: PropTypes.string.isRequired,
     rpcUrl: PropTypes.string.isRequired,
     contractAddress: PropTypes.string.isRequired,
     explorerUrl: PropTypes.string.isRequired,

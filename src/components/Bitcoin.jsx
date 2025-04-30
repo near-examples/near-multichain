@@ -1,22 +1,23 @@
 import { useState, useEffect } from "react";
-import { providers } from 'near-api-js';
 
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
-import { Bitcoin as SignetBTC, BTCRpcAdapters } from 'signet.js'
-import { toRSV } from "signet.js/src/chains/utils";
-import { CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
+import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { chainAdapters, utils } from "chainsig.js";
+import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
-const btcRpcAdapter = new BTCRpcAdapters.Mempool('https://mempool.space/testnet4/api')
-const Bitcoin = new SignetBTC({
+const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
+  "https://mempool.space/testnet4/api"
+)
+
+const Bitcoin = new chainAdapters.btc.Bitcoin({
   network: NetworkId,
-  contract: CONTRACT,
   btcRpcAdapter,
+  contract: SIGNET_CONTRACT,
 })
-
 export function BitcoinView({ props: { setStatus } }) {
-  const { signAndSendTransactions, signedAccountId } = useWalletSelector();
+  const { signedAccountId, callFunction } = useWalletSelector();
 
   const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
@@ -47,8 +48,11 @@ export function BitcoinView({ props: { setStatus } }) {
       setSenderAddress(address);
       setSenderPK(publicKey);
 
-      const btcBalance = await Bitcoin.getBalance(address);
-      const satoshi = SignetBTC.toSatoshi(btcBalance);
+      const balance = await Bitcoin.getBalance(address);
+
+      const bitcoinBalance = bigIntToDecimal(balance.balance, balance.decimals);
+
+      const satoshi = chainAdapters.btc.Bitcoin.toSatoshi(bitcoinBalance);
 
       setStatus(
         `Your Bitcoin address is: ${address}, balance: ${satoshi} satoshi`
@@ -59,11 +63,11 @@ export function BitcoinView({ props: { setStatus } }) {
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction, mpcPayloads } = await Bitcoin.getMPCPayloadAndTransaction({
+    const { transaction, hashesToSign } = await Bitcoin.prepareTransactionForSigning({
       publicKey: senderPK,
       from: senderAddress,
       to: receiver,
-      value: amount
+      value: amount.toString(),
     });
 
     setStatus(
@@ -71,39 +75,32 @@ export function BitcoinView({ props: { setStatus } }) {
     );
 
     try {
-      const mpcTransactions = mpcPayloads.map(
-        ({ payload }) => ({
-          receiverId: MPC_CONTRACT,
-          actions: [
-            {
-              type: 'FunctionCall',
-              params: {
-                methodName: "sign",
-                args: {
-                  request: {
-                    payload: Array.from(payload),
-                    path: derivationPath,
-                    key_version: 0,
-                  },
-                },
-                gas: "250000000000000",
-                deposit: 1,
-              },
-            },
-          ],
-        })
-      )
+      const rsvSignature = await callFunction({
+        contractId: MPC_CONTRACT,
+        method: "sign",
+        args: {
+          request: {
+            payload: hashesToSign[0],
+            path: derivationPath,
+            key_version: 0,
+          },
+        },
+        gas: "250000000000000", // 250 Tgas
+        deposit: 1,
+      });
 
-      const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
-      const mpcSignatures = sentTxs.map(tx => toRSV(providers.getTransactionLastResult(tx)))
+      if (!rsvSignature) {
+        throw new Error("No signature received");
+      }
 
-      const signedTransaction = Bitcoin.addSignature({
+
+      const tx = Bitcoin.finalizeTransactionSigning({
         transaction,
-        mpcSignatures
+        rsvSignatures: [utils.cryptography.toRSV(rsvSignature)],
       });
 
       setStatus("✅ Signed payload ready to be relayed to the Bitcoin network");
-      setSignedTransaction(signedTransaction);
+      setSignedTransaction(tx);
       setStep("relay");
     } catch (e) {
       console.log(e);
@@ -126,7 +123,7 @@ export function BitcoinView({ props: { setStatus } }) {
       setStatus(
         <>
           <a
-            href={`https://mempool.space/es/testnet4/tx/${txHash}`}
+            href={`https://mempool.space/es/testnet4/tx/${txHash.hash}`}
             target="_blank"
           >
             {" "}

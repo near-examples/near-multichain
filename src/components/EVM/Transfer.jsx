@@ -14,11 +14,10 @@ export const TransferForm = forwardRef(
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
-        return await Evm.getMPCPayloadAndTransaction({
+        return await Evm.prepareTransactionForSigning({
           from: senderAddress,
           to: receiver,
-          data: undefined,
-          value: Web3.utils.toWei(amount, "ether"),
+          value: BigInt(Web3.utils.toWei(amount, "ether")),
         });
       },
       async afterRelay() {},
@@ -73,7 +72,7 @@ TransferForm.propTypes = {
     senderAddress: PropTypes.string,
     loading: PropTypes.bool.isRequired,
     Evm: PropTypes.shape({
-      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
+      prepareTransactionForSigning: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };

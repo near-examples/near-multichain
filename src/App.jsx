@@ -73,17 +73,16 @@ function App() {
               {(chain === 'eth' || chain === 'base') && (
                 <EVMView key={chain} props={{
                   setStatus,
-                  MPC_CONTRACT,
                   rpcUrl: RPCforChain[chain],
                   explorerUrl: explorerForChain[chain],
                   contractAddress: chain === 'base' ? "0xCd3b988b216790C598d9AB85Eee189e446CE526D" : "0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3"
                 }} />
               )}
               {chain === 'btc' && (
-                <BitcoinView props={{ setStatus, MPC_CONTRACT }} />
+                <BitcoinView props={{setStatus}} />
               )}
               {chain === 'sol' && (
-                <SolanaView props={{setStatus, MPC_CONTRACT}}></SolanaView>
+                <SolanaView props={{setStatus}}></SolanaView>
               )}
             </div>
           </div>
