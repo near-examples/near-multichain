@@ -30,11 +30,10 @@ export const FunctionCallForm = forwardRef(
       async createTransaction() {
         const data = contract.interface.encodeFunctionData("set", [number]);
 
-        return await Evm.getMPCPayloadAndTransaction({
+        return await Evm.prepareTransactionForSigning({
           from: senderAddress,
           to: contractAddress,
           data,
-          value: BigInt(0),
         });
       },
       async afterRelay() {
@@ -89,7 +88,7 @@ FunctionCallForm.propTypes = {
     loading: PropTypes.bool.isRequired,
     rpcUrl: PropTypes.string.isRequired,
     Evm: PropTypes.shape({
-      getMPCPayloadAndTransaction: PropTypes.func.isRequired,
+      prepareTransactionForSigning: PropTypes.func.isRequired,
     }).isRequired,
   }).isRequired,
 };

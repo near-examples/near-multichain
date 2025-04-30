@@ -83,8 +83,6 @@ export function SolanaView({ props: { setStatus } }) {
           deposit: 1,
         });
 
-        console.log("rsvSignatures", rsvSignatures);
-
         if (!rsvSignatures || !rsvSignatures.signature) {
           throw new Error("Failed to sign transaction");
         }
