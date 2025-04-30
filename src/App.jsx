@@ -5,6 +5,7 @@ import { EVMView } from './components/EVM/EVM';
 import { BitcoinView } from './components/Bitcoin';
 import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
+import { SolanaView } from './components/Solana';
 
 
 function App() {
@@ -65,6 +66,7 @@ function App() {
                   <option value='eth'> Ξ Ethereum </option>
                   <option value='base'> Ξ Base </option>
                   <option value='btc'> ₿ BTC </option>
+                  <option value='sol'> 🪙 Solana </option>
                 </select>
               </div>
 
@@ -79,6 +81,9 @@ function App() {
               )}
               {chain === 'btc' && (
                 <BitcoinView props={{ setStatus, MPC_CONTRACT }} />
+              )}
+              {chain === 'sol' && (
+                <SolanaView props={{setStatus, MPC_CONTRACT}}></SolanaView>
               )}
             </div>
           </div>
