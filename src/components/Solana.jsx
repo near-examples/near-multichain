@@ -6,6 +6,8 @@ import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT, MPC_CONTRACT } from "../config";
 import { chainAdapters } from "chainsig.js";
 import { Connection as SolanaConnection } from '@solana/web3.js'
+import { bigIntToDecimal } from "../utils/bigIntToDecimal";
+import { decimalToBigInt } from "../utils/decimalToBigInt";
 
 function uint8ArrayToHex(uint8Array) {
   return Array.from(uint8Array)
@@ -47,21 +49,21 @@ export function SolanaView({ props: { setStatus } }) {
 
       setSenderAddress(publicKey);
 
-      const solBalance = await solana.getBalance(publicKey);
+      const balance = await solana.getBalance(publicKey);
 
       setStatus(
-        `Your Solana address is:${publicKey}, balance: ${Number(solBalance.balance / 10n ** BigInt(solBalance.decimals))} sol`
+        `Your Solana address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance,balance.decimals)} sol`
       );
     }
   }, [signedAccountId, derivationPath, setStatus]);
 
     async function chainSignature() {
       setStatus("🏗️ Creating transaction");
-
+      
       const { transaction:{transaction} } = await solana.prepareTransactionForSigning({
         from: senderAddress,
         to: receiver,
-        amount: BigInt(amount)*10n ** BigInt(9),
+        amount: decimalToBigInt(amount, 9),
       })
 
       setStatus(
@@ -82,8 +84,6 @@ export function SolanaView({ props: { setStatus } }) {
           gas: "250000000000000", // 250 Tgas
           deposit: 1,
         });
-
-        console.log("rsvSignatures", rsvSignatures);
 
         if (!rsvSignatures || !rsvSignatures.signature) {
           throw new Error("Failed to sign transaction");
@@ -195,7 +195,8 @@ export function SolanaView({ props: { setStatus } }) {
           className="form-control form-control-sm"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          step="1"
+          step="0.1"
+          min="0"
           disabled={loading}
         />
         <div className="form-text"> solana units </div>
