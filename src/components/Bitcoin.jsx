@@ -17,7 +17,7 @@ const Bitcoin = new chainAdapters.btc.Bitcoin({
   contract: SIGNET_CONTRACT,
 })
 export function BitcoinView({ props: { setStatus } }) {
-  const { signedAccountId, callFunction } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
   const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
@@ -73,30 +73,40 @@ export function BitcoinView({ props: { setStatus } }) {
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while..."
     );
-
     try {
-      const rsvSignature = await callFunction({
-        contractId: MPC_CONTRACT,
-        method: "sign",
-        args: {
-          request: {
-            payload: hashesToSign[0],
-            path: derivationPath,
-            key_version: 0,
-          },
-        },
-        gas: "250000000000000", // 250 Tgas
-        deposit: 1,
-      });
+      const mpcTransactions = hashesToSign.map(
+        (hash) => ({
+          receiverId: MPC_CONTRACT,
+          actions: [
+            {
+              type: 'FunctionCall',
+              params: {
+                methodName: "sign",
+                args: {
+                  request: {
+                    payload: hash,
+                    path: derivationPath,
+                    key_version: 0,
+                  },
+                },
+                gas: "250000000000000",
+                deposit: 1,
+              },
+            },
+          ],
+        })
+      )
 
-      if (!rsvSignature) {
+      const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
+      const rsvSignatures = sentTxs.map(tx => utils.cryptography.toRSV(tx))
+      
+      if (!rsvSignatures) {
         throw new Error("No signature received");
       }
 
-
       const tx = Bitcoin.finalizeTransactionSigning({
         transaction,
-        rsvSignatures: [utils.cryptography.toRSV(rsvSignature)],
+        rsvSignatures,
       });
 
       setStatus("✅ Signed payload ready to be relayed to the Bitcoin network");
