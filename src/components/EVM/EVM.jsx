@@ -6,9 +6,9 @@ import { TransferForm } from "./Transfer";
 import { FunctionCallForm } from "./FunctionCall";
 import Web3 from "web3";
 
-import { SIGNET_CONTRACT, MPC_CONTRACT } from "../../config";
+import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
-import { chainAdapters, utils } from "chainsig.js";
+import { chainAdapters, utils, contracts } from "chainsig.js";
 import { createPublicClient, http } from "viem";
 import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
 
@@ -16,7 +16,7 @@ import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
 export function EVMView({
   props: { setStatus, rpcUrl, contractAddress, explorerUrl },
 }) {
-  const { callFunction, signedAccountId } = useWalletSelector();
+  const { callFunction, signedAccountId, wallet } = useWalletSelector();
 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
@@ -26,6 +26,8 @@ export function EVMView({
   const [action, setAction] = useState("transfer");
   const [derivation, setDerivation] = useState("ethereum-1");
   const [signedTransaction, setSignedTransaction] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [Evm, setEvm] = useState(null);
 
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
   const [txCost, setTxCost] = useState("");
@@ -34,15 +36,31 @@ export function EVMView({
   const childRef = useRef();
   const web3 = new Web3(rpcUrl);
 
-  const publicClient = createPublicClient({
-    transport: http(rpcUrl),
-  });
 
-  const Evm = new chainAdapters.evm.EVM({
-    publicClient,
-    contract: SIGNET_CONTRACT,
-  })
 
+  useEffect(() => {
+    if (!wallet) {
+      setStatus("Please connect your wallet");
+      return;
+    }
+
+    const publicClient = createPublicClient({
+      transport: http(rpcUrl),
+    });
+
+    const CONTRACT = new contracts.near.ChainSignatureContractWallet({
+      networkId: NetworkId,
+      contractId: MPC_CONTRACT,
+      wallet
+    });
+    console.log(CONTRACT.getPublicKey());
+
+    setContract(CONTRACT);
+    setEvm(new chainAdapters.evm.EVM({
+      publicClient,
+      contract: CONTRACT
+    }));
+  }, [wallet]);
   useEffect(() => {
     async function fetchEthereumGasPrice() {
       try {
@@ -79,9 +97,13 @@ export function EVMView({
 
   // Handle changes to derivation path and query Ethereum address and balance
   useEffect(() => {
+    if (!Evm) {
+      setStatus("Please connect your wallet");
+      return;
+    }
     resetAddressState();
     fetchEthereumAddress();
-  }, [derivationPath, signedAccountId]);
+  }, [derivationPath, signedAccountId, Evm]);
 
   const resetAddressState = () => {
     setSenderLabel("Waiting for you to stop typing...");
@@ -99,7 +121,7 @@ export function EVMView({
     setSenderAddress(address);
     setSenderLabel(address);
     const balance = await Evm.getBalance(address);
-    setBalance(bigIntToDecimal(balance.balance,balance.decimals));
+    setBalance(bigIntToDecimal(balance.balance, balance.decimals));
   };
 
   async function chainSignature() {
@@ -111,36 +133,44 @@ export function EVMView({
     setStatus(
       `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
     );
-  
+
     try {
-      const signature = await callFunction({
-        contractId: MPC_CONTRACT,
-        method: "sign",
-        args: {
-          request: {
-            payload: hashesToSign[0],
-            path: derivationPath,
-            key_version: 0,
-          },
+      // const signature = await callFunction({
+      //   contractId: MPC_CONTRACT,
+      //   method: "sign",
+      //   args: {
+      //     request: {
+      //       payload: hashesToSign[0],
+      //       path: derivationPath,
+      //       key_version: 0,
+      //     },
+      //   },
+      //   gas: "250000000000000", // 250 Tgas
+      //   deposit: 1,
+      // });
+
+
+      const signature = await contract.sign({
+        request: {
+          payload: hashesToSign[0],
+          path: derivationPath,
+          key_version: 0,
         },
-        gas: "250000000000000", // 250 Tgas
-        deposit: 1,
       });
-      
-      setSignedTransaction(
-        Evm.finalizeTransactionSigning({
-          transaction: transaction,
-          rsvSignatures: [utils.cryptography.toRSV(signature)],
-        })
-      );
+
+      const txSerialized = Evm.finalizeTransactionSigning({
+        transaction: transaction,
+        rsvSignatures: [signature],
+      })
+
+      setSignedTransaction(txSerialized);
 
       setStatus(
         `✅ Signed payload ready to be relayed to the Ethereum network`
       );
       setStep("relay");
     } catch (e) {
-      console.trace(e);
-      
+      console.log(e);
       setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
     }

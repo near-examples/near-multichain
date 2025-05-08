@@ -4,20 +4,12 @@ import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
 import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
-import { chainAdapters, utils } from "chainsig.js";
+import { chainAdapters, contracts, utils } from "chainsig.js";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
-const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
-  "https://mempool.space/testnet4/api"
-)
 
-const Bitcoin = new chainAdapters.btc.Bitcoin({
-  network: NetworkId,
-  btcRpcAdapter,
-  contract: SIGNET_CONTRACT,
-})
 export function BitcoinView({ props: { setStatus } }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions, wallet } = useWalletSelector();
 
   const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
   const [amount, setAmount] = useState(1000);
@@ -26,15 +18,47 @@ export function BitcoinView({ props: { setStatus } }) {
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
   const [senderPK, setSenderPK] = useState("");
+  const [Bitcoin, setBitcoin] = useState(null);
+  const [contract, setContract] = useState(null);
 
   const [derivation, setDerivation] = useState("bitcoin-1");
   const derivationPath = useDebounce(derivation, 500);
+
+  
+  
+    useEffect(() => {
+      if (!wallet) {
+        setStatus("Please connect your wallet");
+        return;
+      }
+      const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
+        "https://mempool.space/testnet4/api"
+      )
+
+      const CONTRACT = new contracts.near.ChainSignatureContractWallet({
+        networkId: NetworkId,
+        contractId: MPC_CONTRACT,
+        wallet
+      });
+
+      console.log(CONTRACT.getPublicKey());
+  
+      setContract(CONTRACT);
+      setBitcoin(new chainAdapters.btc.Bitcoin({
+        network: NetworkId,
+        btcRpcAdapter,
+        contract: CONTRACT
+      }));
+    }, [wallet]);
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
   }, [derivation]);
 
   useEffect(() => {
+    if(!Bitcoin){
+      return
+    }
     setBtcAddress();
 
     async function setBtcAddress() {
@@ -58,7 +82,7 @@ export function BitcoinView({ props: { setStatus } }) {
         `Your Bitcoin address is: ${address}, balance: ${satoshi} satoshi`
       );
     }
-  }, [signedAccountId, derivationPath, setStatus]);
+  }, [signedAccountId, derivationPath, setStatus, Bitcoin]);
 
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
@@ -69,36 +93,44 @@ export function BitcoinView({ props: { setStatus } }) {
       to: receiver,
       value: amount.toString(),
     });
-
+    
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while..."
     );
     try {
-      const mpcTransactions = hashesToSign.map(
-        (hash) => ({
-          receiverId: MPC_CONTRACT,
-          actions: [
-            {
-              type: 'FunctionCall',
-              params: {
-                methodName: "sign",
-                args: {
-                  request: {
-                    payload: hash,
-                    path: derivationPath,
-                    key_version: 0,
-                  },
-                },
-                gas: "250000000000000",
-                deposit: 1,
-              },
-            },
-          ],
-        })
-      )
+      // const mpcTransactions = hashesToSign.map(
+      //   (hash) => ({
+      //     receiverId: MPC_CONTRACT,
+      //     actions: [
+      //       {
+      //         type: 'FunctionCall',
+      //         params: {
+      //           methodName: "sign",
+      //           args: {
+      //             request: {
+      //               payload: hash,
+      //               path: derivationPath,
+      //               key_version: 0,
+      //             },
+      //           },
+      //           gas: "250000000000000",
+      //           deposit: 1,
+      //         },
+      //       },
+      //     ],
+      //   })
+      // )
 
-      const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
-      const rsvSignatures = sentTxs.map(tx => utils.cryptography.toRSV(tx))
+      // const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
+      // const rsvSignatures = sentTxs.map(tx => utils.cryptography.toRSV(tx))
+      console.log(hashesToSign);
+      
+      const rsvSignatures = await contract.sign({
+          payload: hashesToSign,
+          path: derivationPath,
+          key_version: 0,
+      })
+      console.log(rsvSignatures);
       
       if (!rsvSignatures) {
         throw new Error("No signature received");

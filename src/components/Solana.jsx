@@ -3,8 +3,8 @@ import PropTypes from "prop-types";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
-import { SIGNET_CONTRACT, MPC_CONTRACT } from "../config";
-import { chainAdapters } from "chainsig.js";
+import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
+import { chainAdapters, contracts } from "chainsig.js";
 import { Connection as SolanaConnection } from '@solana/web3.js'
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 import { decimalToBigInt } from "../utils/decimalToBigInt";
@@ -15,14 +15,10 @@ function uint8ArrayToHex(uint8Array) {
     .join('');
 }
 
-const connection = new SolanaConnection("https://api.devnet.solana.com");
-const solana = new chainAdapters.solana.Solana({
-  solanaConnection: connection,
-  contract: SIGNET_CONTRACT
-}) 
+
 
 export function SolanaView({ props: { setStatus } }) {
-  const { callFunction, signedAccountId } = useWalletSelector();
+  const { signedAccountId, wallet } = useWalletSelector();
  
   const [receiver, setReceiver] = useState("G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA");
   const [amount, setAmount] = useState(1);
@@ -30,15 +26,43 @@ export function SolanaView({ props: { setStatus } }) {
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
+  const [solana, setSolana] = useState(null);
+  const [contract, setContract] = useState(null);
 
   const [derivation, setDerivation] = useState("solana-1");
   const derivationPath = useDebounce(derivation, 500);
 
+
+
+  useEffect(() => {
+    if(!wallet) {
+      setStatus("Please connect your wallet");
+      return;
+    }
+
+    const connection = new SolanaConnection("https://api.devnet.solana.com");
+    const CONTRACT = new contracts.near.ChainSignatureContractWallet({
+      networkId: NetworkId,
+      contractId: MPC_CONTRACT,
+      wallet
+    });
+    console.log(CONTRACT.getPublicKey());
+    
+    setContract(CONTRACT);
+    setSolana(new chainAdapters.solana.Solana({
+      solanaConnection: connection,
+      contract: SIGNET_CONTRACT
+    }) );
+  },[wallet]);
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
   }, [derivation]);
 
   useEffect(() => {
+    if(!solana) {
+      setStatus("Please connect your wallet");
+      return;
+    } 
     setSolAddress();
 
     async function setSolAddress() {
@@ -55,9 +79,13 @@ export function SolanaView({ props: { setStatus } }) {
         `Your Solana address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance,balance.decimals)} sol`
       );
     }
-  }, [signedAccountId, derivationPath, setStatus]);
+  }, [signedAccountId, derivationPath, setStatus,solana]);
 
     async function chainSignature() {
+      if(contract){
+        console.log(contract);
+        
+      }
       setStatus("🏗️ Creating transaction");
       
       const { transaction:{transaction} } = await solana.prepareTransactionForSigning({
@@ -71,20 +99,16 @@ export function SolanaView({ props: { setStatus } }) {
       );
 
       try {
-        const rsvSignatures = await callFunction({
-          contractId: MPC_CONTRACT,
-          method: "sign",
-          args: {
+        console.log(contract);
+        
+        const rsvSignatures = await contract.sign({
             request: {
               payload_v2: { "Eddsa": uint8ArrayToHex(transaction.serializeMessage()) },
               path: derivationPath,
               domain_id: 1,
             },
-          },
-          gas: "250000000000000", // 250 Tgas
-          deposit: 1,
-        });
-
+          });
+          
         if (!rsvSignatures || !rsvSignatures.signature) {
           throw new Error("Failed to sign transaction");
         }
@@ -94,10 +118,9 @@ export function SolanaView({ props: { setStatus } }) {
           rsvSignatures,
           senderAddress
         })
-        await solana.broadcastTx(txSerialized);
 
         setStatus("✅ Signed payload ready to be relayed to the Solana network");
-        setSignedTransaction(transaction.serialize().toString('base64'));
+        setSignedTransaction(txSerialized);
         setStep("relay");
       } catch (e) {
         console.log(e);
