@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
-import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
+import { SIGNET_CONTRACT, NetworkId } from "../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
-import { chainAdapters, utils } from "chainsig.js";
+import { chainAdapters } from "chainsig.js";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
 const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
@@ -14,8 +14,9 @@ const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
 const Bitcoin = new chainAdapters.btc.Bitcoin({
   network: NetworkId,
   btcRpcAdapter,
-  contract: SIGNET_CONTRACT,
+  contract: SIGNET_CONTRACT
 })
+
 export function BitcoinView({ props: { setStatus } }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
@@ -74,32 +75,17 @@ export function BitcoinView({ props: { setStatus } }) {
       "🕒 Asking MPC to sign the transaction, this might take a while..."
     );
     try {
-      const mpcTransactions = hashesToSign.map(
-        (hash) => ({
-          receiverId: MPC_CONTRACT,
-          actions: [
-            {
-              type: 'FunctionCall',
-              params: {
-                methodName: "sign",
-                args: {
-                  request: {
-                    payload: hash,
-                    path: derivationPath,
-                    key_version: 0,
-                  },
-                },
-                gas: "250000000000000",
-                deposit: 1,
-              },
-            },
-          ],
-        })
-      )
 
-      const sentTxs = await signAndSendTransactions({ transactions: mpcTransactions });
-      const rsvSignatures = sentTxs.map(tx => utils.cryptography.toRSV(tx))
-      
+      const rsvSignatures = await SIGNET_CONTRACT.sign({
+        payloads: hashesToSign,
+        path: derivationPath,
+        keyType: "Ecdsa",
+        signerAccount: { 
+          accountId: signedAccountId,
+          signAndSendTransactions 
+        }
+      });
+
       if (!rsvSignatures) {
         throw new Error("No signature received");
       }
