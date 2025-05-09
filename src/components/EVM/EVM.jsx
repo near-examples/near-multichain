@@ -11,7 +11,6 @@ import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { chainAdapters } from "chainsig.js";
 import { createPublicClient, http } from "viem";
 import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
-import { uint8ArrayToHex } from "../../utils/unit8ArrayToHex";
 
 export function EVMView({
   props: { setStatus, rpcUrl, contractAddress, explorerUrl },
@@ -114,7 +113,7 @@ export function EVMView({
     try {
 
       const rsvSignatures = await SIGNET_CONTRACT.sign({
-        payloads: [uint8ArrayToHex(hashesToSign[0])],
+        payloads: hashesToSign,
         path: derivationPath,
         keyType: "Ecdsa",
         signerAccount: { 

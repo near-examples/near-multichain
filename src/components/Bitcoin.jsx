@@ -6,7 +6,6 @@ import { SIGNET_CONTRACT, NetworkId } from "../config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { chainAdapters } from "chainsig.js";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
-import { uint8ArrayToHex } from "../utils/unit8ArrayToHex";
 
 const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
   "https://mempool.space/testnet4/api"
@@ -78,7 +77,7 @@ export function BitcoinView({ props: { setStatus } }) {
     try {
 
       const rsvSignatures = await SIGNET_CONTRACT.sign({
-        payloads: hashesToSign.map(hash => uint8ArrayToHex(hash)),
+        payloads: hashesToSign,
         path: derivationPath,
         keyType: "Ecdsa",
         signerAccount: { 

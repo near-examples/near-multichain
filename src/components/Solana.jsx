@@ -8,7 +8,6 @@ import { chainAdapters } from "chainsig.js";
 import { Connection as SolanaConnection } from '@solana/web3.js'
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 import { decimalToBigInt } from "../utils/decimalToBigInt";
-import { uint8ArrayToHex } from "../utils/unit8ArrayToHex";
 
 const connection = new SolanaConnection("https://api.devnet.solana.com");
 
@@ -67,7 +66,7 @@ export function SolanaView({ props: { setStatus } }) {
 
     try {
       const rsvSignatures = await SIGNET_CONTRACT.sign({
-        payloads: [uint8ArrayToHex(transaction.serializeMessage())],
+        payloads: [transaction.serializeMessage()],
         path: derivationPath,
         keyType: "Eddsa",
         signerAccount: { 
