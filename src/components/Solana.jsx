@@ -3,160 +3,127 @@ import PropTypes from "prop-types";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
-import { SIGNET_CONTRACT, MPC_CONTRACT, NetworkId } from "../config";
-import { chainAdapters, contracts } from "chainsig.js";
+import { SIGNET_CONTRACT } from "../config";
+import { chainAdapters } from "chainsig.js";
 import { Connection as SolanaConnection } from '@solana/web3.js'
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 import { decimalToBigInt } from "../utils/decimalToBigInt";
+import { uint8ArrayToHex } from "../utils/unit8ArrayToHex";
 
-function uint8ArrayToHex(uint8Array) {
-  return Array.from(uint8Array)
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
+const connection = new SolanaConnection("https://api.devnet.solana.com");
 
-
-
+const Solana = new chainAdapters.solana.Solana({
+  solanaConnection: connection,
+  contract: SIGNET_CONTRACT
+})
 export function SolanaView({ props: { setStatus } }) {
-  const { signedAccountId, wallet } = useWalletSelector();
- 
+  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+
   const [receiver, setReceiver] = useState("G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA");
   const [amount, setAmount] = useState(1);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
-  const [solana, setSolana] = useState(null);
-  const [contract, setContract] = useState(null);
 
   const [derivation, setDerivation] = useState("solana-1");
   const derivationPath = useDebounce(derivation, 500);
 
-
-
-  useEffect(() => {
-    if(!wallet) {
-      setStatus("Please connect your wallet");
-      return;
-    }
-
-    const connection = new SolanaConnection("https://api.devnet.solana.com");
-    const CONTRACT = new contracts.near.ChainSignatureContractWallet({
-      networkId: NetworkId,
-      contractId: MPC_CONTRACT,
-      wallet
-    });
-    console.log(CONTRACT.getPublicKey());
-    
-    setContract(CONTRACT);
-    setSolana(new chainAdapters.solana.Solana({
-      solanaConnection: connection,
-      contract: SIGNET_CONTRACT
-    }) );
-  },[wallet]);
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
   }, [derivation]);
 
   useEffect(() => {
-    if(!solana) {
-      setStatus("Please connect your wallet");
-      return;
-    } 
     setSolAddress();
 
     async function setSolAddress() {
       setStatus("Querying your address and balance");
       setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
-      const { publicKey } = await solana.deriveAddressAndPublicKey(signedAccountId, derivationPath);
+      const { publicKey } = await Solana.deriveAddressAndPublicKey(signedAccountId, derivationPath);
 
       setSenderAddress(publicKey);
 
-      const balance = await solana.getBalance(publicKey);
+      const balance = await Solana.getBalance(publicKey);
 
       setStatus(
-        `Your Solana address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance,balance.decimals)} sol`
+        `Your Solana address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} sol`
       );
     }
-  }, [signedAccountId, derivationPath, setStatus,solana]);
+  }, [signedAccountId, derivationPath, setStatus]);
 
-    async function chainSignature() {
-      if(contract){
-        console.log(contract);
-        
+  async function chainSignature() {
+    setStatus("🏗️ Creating transaction");
+
+    const { transaction: { transaction } } = await Solana.prepareTransactionForSigning({
+      from: senderAddress,
+      to: receiver,
+      amount: decimalToBigInt(amount, 9),
+    })
+
+    setStatus(
+      "🕒 Asking MPC to sign the transaction, this might take a while..."
+    );
+
+    try {
+      const rsvSignatures = await SIGNET_CONTRACT.sign({
+        payloads: [uint8ArrayToHex(transaction.serializeMessage())],
+        path: derivationPath,
+        keyType: "Eddsa",
+        signerAccount: { 
+          accountId: signedAccountId,
+          signAndSendTransactions 
+        }
+      });
+
+      if (!rsvSignatures[0] || !rsvSignatures[0].signature) {
+        throw new Error("Failed to sign transaction");
       }
-      setStatus("🏗️ Creating transaction");
-      
-      const { transaction:{transaction} } = await solana.prepareTransactionForSigning({
-        from: senderAddress,
-        to: receiver,
-        amount: decimalToBigInt(amount, 9),
+
+      const txSerialized = Solana.finalizeTransactionSigning({
+        transaction,
+        rsvSignatures: rsvSignatures[0],
+        senderAddress
       })
 
-      setStatus(
-        "🕒 Asking MPC to sign the transaction, this might take a while..."
-      );
-
-      try {
-        console.log(contract);
-        
-        const rsvSignatures = await contract.sign({
-            request: {
-              payload_v2: { "Eddsa": uint8ArrayToHex(transaction.serializeMessage()) },
-              path: derivationPath,
-              domain_id: 1,
-            },
-          });
-          
-        if (!rsvSignatures || !rsvSignatures.signature) {
-          throw new Error("Failed to sign transaction");
-        }
-
-        const txSerialized = solana.finalizeTransactionSigning({    
-          transaction,
-          rsvSignatures,
-          senderAddress
-        })
-
-        setStatus("✅ Signed payload ready to be relayed to the Solana network");
-        setSignedTransaction(txSerialized);
-        setStep("relay");
-      } catch (e) {
-        console.log(e);
-        setStatus(`❌ Error: ${e.message}`);
-        setLoading(false);
-      }
-    }
-  
-    async function relayTransaction() {
-      setLoading(true);
-      setStatus(
-        "🔗 Relaying transaction to the Solana network... this might take a while"
-      );
-  
-      try {
-  
-        const txHash = await solana.broadcastTx(signedTransaction);
-
-        setStatus(
-          <>
-            <a
-              href={`https://explorer.solana.com/tx/${txHash.hash}?cluster=devnet`}
-              target="_blank"
-            >
-              {" "}
-              ✅ Successfully Broadcasted{" "}
-            </a>
-          </>
-        );
-      } catch (e) {
-        setStatus(`❌ Error: ${e.message}`);
-      }
-  
-      setStep("request");
+      setStatus("✅ Signed payload ready to be relayed to the Solana network");
+      setSignedTransaction(txSerialized);
+      setStep("relay");
+    } catch (e) {
+      console.log(e);
+      setStatus(`❌ Error: ${e.message}`);
       setLoading(false);
     }
+  }
+
+  async function relayTransaction() {
+    setLoading(true);
+    setStatus(
+      "🔗 Relaying transaction to the Solana network... this might take a while"
+    );
+
+    try {
+
+      const txHash = await Solana.broadcastTx(signedTransaction);
+
+      setStatus(
+        <>
+          <a
+            href={`https://explorer.solana.com/tx/${txHash.hash}?cluster=devnet`}
+            target="_blank"
+          >
+            {" "}
+            ✅ Successfully Broadcasted{" "}
+          </a>
+        </>
+      );
+    } catch (e) {
+      setStatus(`❌ Error: ${e.message}`);
+    }
+
+    setStep("request");
+    setLoading(false);
+  }
 
   const UIChainSignature = async () => {
     setLoading(true);
@@ -164,7 +131,7 @@ export function SolanaView({ props: { setStatus } }) {
     setLoading(false);
   };
 
-  return (    <>
+  return (<>
     <div className="alert alert-info text-center" role="alert">
       You are working with <strong>DevTest</strong>.
       <br />
