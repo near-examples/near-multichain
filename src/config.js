@@ -14,10 +14,9 @@ export const NetworkId = 'testnet';
 export const MPC_CONTRACT = 'v1.signer-prod.testnet'
 export const MPC_KEY = 'secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3';
 
-export const SIGNET_CONTRACT = new contracts.near.ChainSignatureContract({
+export const SIGNET_CONTRACT = new contracts.ChainSignatureContract({
   networkId: NetworkId,
   contractId: MPC_CONTRACT,
-  accountId: '',
 })
 
 export const ABI = [
