@@ -6,6 +6,7 @@ import { BitcoinView } from './components/Bitcoin';
 import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
+import { SuiView } from './components/Sui';
 
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
                   <option value='base'> Ξ Base </option>
                   <option value='btc'> ₿ BTC </option>
                   <option value='sol'> 🪙 Solana </option>
+                  <option value='sui'> 🪙 Solana </option>
                 </select>
               </div>
 
@@ -83,6 +85,9 @@ function App() {
               )}
               {chain === 'sol' && (
                 <SolanaView props={{setStatus}}></SolanaView>
+              )}
+               {chain === 'sui' && (
+                <SuiView props={{setStatus}} />
               )}
             </div>
           </div>
