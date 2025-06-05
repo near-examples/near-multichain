@@ -6,13 +6,13 @@ import { BitcoinView } from './components/Bitcoin';
 import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
+import { AptosView } from './components/Aptos';
 
 
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
   const [chain, setChain] = useState('eth');
-
 
   return (
     <>
@@ -79,10 +79,13 @@ function App() {
                 }} />
               )}
               {chain === 'btc' && (
-                <BitcoinView props={{setStatus}} />
+                <BitcoinView props={{ setStatus }} />
               )}
               {chain === 'sol' && (
-                <SolanaView props={{setStatus}}></SolanaView>
+                <SolanaView props={{ setStatus }}></SolanaView>
+              )}
+              {chain === 'apt' && (
+                <AptosView props={{ setStatus }} />
               )}
             </div>
           </div>
