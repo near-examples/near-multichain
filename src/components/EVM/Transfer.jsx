@@ -6,7 +6,7 @@ import { useImperativeHandle } from "react";
 import Web3 from "web3";
 
 export const TransferForm = forwardRef(
-  ({ props: { Evm, senderAddress, loading } }, ref) => {
+  ({ props: { Evm, senderAddress, loading, token } }, ref) => {
     const [receiver, setReceiver] = useState(
       "0x72284EceE80A34BbC4c65d8A468B7771552a421b"
     );
@@ -55,7 +55,7 @@ export const TransferForm = forwardRef(
                     disabled={loading}
                   />
                   <span className="input-group-text bg-warning text-white">
-                    ETH
+                    {token}
                   </span>
                 </div>
               </div>
@@ -71,6 +71,7 @@ TransferForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string,
     loading: PropTypes.bool.isRequired,
+    token: PropTypes.string.isRequired,
     Evm: PropTypes.shape({
       prepareTransactionForSigning: PropTypes.func.isRequired,
     }).isRequired,

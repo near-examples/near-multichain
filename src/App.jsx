@@ -1,18 +1,39 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import Select from 'react-select';
 
 import Navbar from './components/Navbar';
 import { EVMView } from './components/EVM/EVM';
 import { BitcoinView } from './components/Bitcoin';
-import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
+import { MPC_CONTRACT, NetworksEVM } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
-
 
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('eth');
+  const [chain, setChain] = useState('ETH');
 
+  const selectedNetwork = useMemo(
+    () => NetworksEVM.find(n => n.token === chain),
+    [chain]
+  );
+
+  const chainOptions = [
+    {
+      label: 'EVM',
+      options: NetworksEVM.map((network) => ({
+        value: network.token,
+        label: `Ξ ${network.network}`,
+      })),
+    },
+    {
+      label: 'Otros',
+      options: [
+        { value: 'btc', label: '₿ BTC' },
+        { value: 'sol', label: '🪙 Solana' },
+      ],
+    },
+  ];
 
   return (
     <>
@@ -57,25 +78,24 @@ function App() {
                 >
                   Destination Chain
                 </span>
-                <select
-                  className='form-select text-center'
-                  aria-describedby='chain'
-                  value={chain}
-                  onChange={(e) => setChain(e.target.value)}
-                >
-                  <option value='eth'> Ξ Ethereum </option>
-                  <option value='base'> Ξ Base </option>
-                  <option value='btc'> ₿ BTC </option>
-                  <option value='sol'> 🪙 Solana </option>
-                </select>
+                <div className="flex-grow-1">
+                  <Select
+                    options={chainOptions}
+                    value={
+                      chainOptions
+                        .flatMap(group => group.options)
+                        .find(opt => opt.value === chain)
+                    }
+                    onChange={opt => setChain(opt.value)}
+                    isOptionDisabled={opt => opt.isDisabled}
+                  />
+                </div>
               </div>
 
-              {(chain === 'eth' || chain === 'base') && (
+              {(selectedNetwork) && (
                 <EVMView key={chain} props={{
                   setStatus,
-                  rpcUrl: RPCforChain[chain],
-                  explorerUrl: explorerForChain[chain],
-                  contractAddress: chain === 'base' ? "0xCd3b988b216790C598d9AB85Eee189e446CE526D" : "0xe2a01146FFfC8432497ae49A7a6cBa5B9Abd71A3"
+                  network: selectedNetwork
                 }} />
               )}
               {chain === 'btc' && (
