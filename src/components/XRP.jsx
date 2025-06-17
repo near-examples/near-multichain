@@ -24,7 +24,7 @@ export function XRPView({ props: { setStatus } }) {
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
 
-  const [derivation, setDerivation] = useState("solana-1");
+  const [derivation, setDerivation] = useState("xrp-1");
   const [senderPK, setSenderPK] = useState("");
   const derivationPath = useDebounce(derivation, 500);
 
