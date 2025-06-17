@@ -58,9 +58,8 @@ export function XRPView({ props: { setStatus } }) {
       from: senderAddress,
       to: receiver,
       amount: decimalToBigInt(amount, 6).toString(),
+      publicKey: senderPK,
     });
-    
-    console.log(transaction);
     
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while..."
@@ -70,22 +69,20 @@ export function XRPView({ props: { setStatus } }) {
       const rsvSignatures = await SIGNET_CONTRACT.sign({
         payloads: hashesToSign,
         path: derivationPath,
-        keyType: "Eddsa",
+        keyType: "Ecdsa",
         signerAccount: { 
           accountId: signedAccountId,
           signAndSendTransactions 
         }
       });
 
-      if (!rsvSignatures[0] || !rsvSignatures[0].signature) {
+      if (!rsvSignatures[0]) {
         throw new Error("Failed to sign transaction");
       }
-      console.log({rsvSignatures});
       
       const txSerialized = Xrp.finalizeTransactionSigning({
         transaction,
         rsvSignatures,
-        publicKey: senderPK,
       })
 
       setStatus("✅ Signed payload ready to be relayed to the XRP network");
@@ -136,16 +133,16 @@ export function XRPView({ props: { setStatus } }) {
 
   return (<>
     <div className="alert alert-info text-center" role="alert">
-      You are working with <strong>DevTest</strong>.
+      You are working with <strong>Testnet</strong>.
       <br />
       You can get funds from the faucet:
       <a
-        href="https://faucet.solana.com/"
+        href="https://xrpl.org/resources/dev-tools/xrp-faucets"
         target="_blank"
         rel="noopener noreferrer"
         className="alert-link"
       >
-        faucet.solana.com/
+        xrpl.org/resources/dev-tools/xrp-faucets
       </a>
     </div>
     <div className="row my-3">
@@ -192,7 +189,7 @@ export function XRPView({ props: { setStatus } }) {
           min="0"
           disabled={loading}
         />
-        <div className="form-text"> solana units </div>
+        <div className="form-text"> XRP units </div>
       </div>
     </div>
 
