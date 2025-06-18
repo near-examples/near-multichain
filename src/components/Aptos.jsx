@@ -23,12 +23,13 @@ const Aptos = new chainAdapters.aptos.Aptos({
 export function AptosView({ props: { setStatus } }) {
     const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
-    const [receiver, setReceiver] = useState("0xe172aad97ab19b95ce3b55a6e90cc4a60fbf49d13ea53c6cb656b4596a08a8ac");
+    const [receiver, setReceiver] = useState("0x3b0c3efaa16f5c7c53d3ca9c12622c90542ff36485f7f713ba8e76756a3fbbea");
     const [amount, setAmount] = useState(1);
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState("request");
     const [signedTransaction, setSignedTransaction] = useState(null);
     const [senderAddress, setSenderAddress] = useState("");
+    const [senderPK, setSenderPK] = useState("");
 
     const [derivation, setDerivation] = useState("aptos-1");
     const derivationPath = useDebounce(derivation, 500);
@@ -38,40 +39,50 @@ export function AptosView({ props: { setStatus } }) {
     }, [derivation]);
 
     useEffect(() => {
-        setSolAddress();
+        setAptosAddress();
 
-        async function setSolAddress() {
+        async function setAptosAddress() {
             setStatus("Querying your address and balance");
             setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
-            const { publicKey } = await Aptos.deriveAddressAndPublicKey(signedAccountId, derivationPath);
+            const { address,publicKey } = await Aptos.deriveAddressAndPublicKey(signedAccountId, derivationPath);
 
-            setSenderAddress(publicKey);
+            setSenderAddress(address);
+            setSenderPK(publicKey);
 
-            const balance = await Aptos.getBalance(publicKey);
+            const balance = await Aptos.getBalance(address);
 
             setStatus(
-                `Your Aptos address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} sol`
+                `Your Aptos address is: ${address}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} APT`
             );
         }
+
     }, [signedAccountId, derivationPath, setStatus]);
 
     async function chainSignature() {
         setStatus("🏗️ Creating transaction");
 
-        const { transaction: { transaction } } = await Aptos.prepareTransactionForSigning({
-            from: senderAddress,
-            to: receiver,
-            amount: decimalToBigInt(amount, 9),
+        const transactionPayload = {
+            function: '0x1::aptos_account::transfer',
+            functionArguments: [
+                receiver,
+                decimalToBigInt(amount, 8),
+            ],
+        };
+
+        const transaction = await aptosClient.transaction.build.simple({
+            sender: senderAddress,
+            data: transactionPayload,
         })
 
+        const { hashesToSign } = await Aptos.prepareTransactionForSigning(transaction)
         setStatus(
             "🕒 Asking MPC to sign the transaction, this might take a while..."
         );
 
         try {
             const rsvSignatures = await SIGNET_CONTRACT.sign({
-                payloads: [transaction.serializeMessage()],
+                payloads: hashesToSign,
                 path: derivationPath,
                 keyType: "Eddsa",
                 signerAccount: {
@@ -87,11 +98,11 @@ export function AptosView({ props: { setStatus } }) {
             const txSerialized = Aptos.finalizeTransactionSigning({
                 transaction,
                 rsvSignatures: rsvSignatures[0],
-                senderAddress
-            })
+                publicKey: senderPK
+            });
 
-            setStatus("✅ Signed payload ready to be relayed to the Aptos network");
             setSignedTransaction(txSerialized);
+            setStatus("✅ Signed payload ready to be relayed to the Aptos network");
             setStep("relay");
         } catch (e) {
             console.log(e);
@@ -103,17 +114,16 @@ export function AptosView({ props: { setStatus } }) {
     async function relayTransaction() {
         setLoading(true);
         setStatus(
-            "🔗 Relaying transaction to the Aptos network... this might take a while"
+            "🔗 Relaying transaction to the Aptos network..."
         );
 
         try {
-
             const txHash = await Aptos.broadcastTx(signedTransaction);
 
             setStatus(
                 <>
                     <a
-                        href={`https://explorer.solana.com/tx/${txHash.hash}?cluster=devnet`}
+                        href={`https://explorer.aptoslabs.com/txn/${txHash.hash}?network=testnet`}
                         target="_blank"
                     >
                         {" "}
@@ -122,6 +132,12 @@ export function AptosView({ props: { setStatus } }) {
                 </>
             );
         } catch (e) {
+            if (e.message.includes("TRANSACTION_EXPIRED")) {
+                setStatus("⏰ Transaction expired, creating a new one...");
+                setStep("request");
+                setLoading(false);
+                return;
+            }
             setStatus(`❌ Error: ${e.message}`);
         }
 
@@ -137,16 +153,16 @@ export function AptosView({ props: { setStatus } }) {
 
     return (<>
         <div className="alert alert-info text-center" role="alert">
-            You are working with <strong>DevTest</strong>.
+            You are working with <strong>Aptos Testnet</strong>.
             <br />
             You can get funds from the faucet:
             <a
-                href="https://faucet.solana.com/"
+                href="https://aptos.dev/network/faucet"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="alert-link"
             >
-                faucet.solana.com/
+                aptos.dev/network/faucet
             </a>
         </div>
         <div className="row my-3">
@@ -193,7 +209,7 @@ export function AptosView({ props: { setStatus } }) {
                     min="0"
                     disabled={loading}
                 />
-                <div className="form-text"> solana units </div>
+                <div className="form-text"> APT units </div>
             </div>
         </div>
 
