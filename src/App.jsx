@@ -12,7 +12,7 @@ import { SuiView } from './components/Sui';
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('sui');
+  const [chain, setChain] = useState('eth');
 
 
   return (
