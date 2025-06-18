@@ -8,6 +8,7 @@ import { chainAdapters } from "chainsig.js";
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client'
 import { Transaction } from '@mysten/sui/transactions'
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
+import { decimalToBigInt } from "../utils/decimalToBigInt";
 
 const rpcUrl = getFullnodeUrl('testnet')
 const suiClient = new SuiClient({ url: rpcUrl })
@@ -21,12 +22,13 @@ const Sui = new chainAdapters.sui.SUI({
 export function SuiView({ props: { setStatus } }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
-  const [receiver, setReceiver] = useState("G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA");
+  const [receiver, setReceiver] = useState("0x202fc1c421cbd6d84d632d62de50b90c1cf5564c36422a1cd00b5448b9e3d29f");
   const [amount, setAmount] = useState(1);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
+  const [senderPK, setSenderPK] = useState("");
 
   const [derivation, setDerivation] = useState("sui-1");
   const derivationPath = useDebounce(derivation, 500);
@@ -36,20 +38,21 @@ export function SuiView({ props: { setStatus } }) {
   }, [derivation]);
 
   useEffect(() => {
-    setSolAddress();
+    setSuiAddress();
 
-    async function setSolAddress() {
+    async function setSuiAddress() {
       setStatus("Querying your address and balance");
       setSenderAddress(`Deriving address from path ${derivationPath}...`);
 
-      const { publicKey } = await Sui.deriveAddressAndPublicKey(signedAccountId, derivationPath);
+      const { address, publicKey } = await Sui.deriveAddressAndPublicKey(signedAccountId, derivationPath);
 
-      setSenderAddress(publicKey);
+      setSenderPK(publicKey);
+      setSenderAddress(address);
 
-      const balance = await Sui.getBalance(publicKey);
+      const balance = await Sui.getBalance(address);
 
       setStatus(
-        `Your Sui address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} sol`
+        `Your Sui address is: ${address}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} SUI`
       );
     }
   }, [signedAccountId, derivationPath, setStatus]);
@@ -59,13 +62,13 @@ export function SuiView({ props: { setStatus } }) {
     
     const tx = new Transaction()
 
-    const [coin] = tx.splitCoins(tx.gas, [100])
+    const [coin] = tx.splitCoins(tx.gas, [decimalToBigInt(amount, 9)])
 
     tx.transferObjects(
       [coin],
-      senderAddress
+      receiver
     )
-    tx.setSender(receiver)
+    tx.setSender(senderAddress)
 
     const { hashesToSign, transaction } = await Sui.prepareTransactionForSigning(tx)
 
@@ -76,7 +79,7 @@ export function SuiView({ props: { setStatus } }) {
 
     try {
       const rsvSignatures = await SIGNET_CONTRACT.sign({
-        payloads: [hashesToSign],
+        payloads: hashesToSign,
         path: derivationPath,
         keyType: "Eddsa",
         signerAccount: { 
@@ -92,7 +95,7 @@ export function SuiView({ props: { setStatus } }) {
       const txSerialized = Sui.finalizeTransactionSigning({
         transaction,
         rsvSignatures: rsvSignatures[0],
-        senderAddress
+        publicKey: senderPK
       })
 
       setStatus("✅ Signed payload ready to be relayed to the Sui network");
@@ -146,12 +149,12 @@ export function SuiView({ props: { setStatus } }) {
       <br />
       You can get funds from the faucet:
       <a
-        href="https://faucet.sui.com/"
+        href="https://faucet.sui.io/"
         target="_blank"
         rel="noopener noreferrer"
         className="alert-link"
       >
-        faucet.sui.com/
+        faucet.sui.io/
       </a>
     </div>
     <div className="row my-3">

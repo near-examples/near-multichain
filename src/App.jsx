@@ -12,7 +12,7 @@ import { SuiView } from './components/Sui';
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('eth');
+  const [chain, setChain] = useState('sui');
 
 
   return (
@@ -68,7 +68,7 @@ function App() {
                   <option value='base'> Ξ Base </option>
                   <option value='btc'> ₿ BTC </option>
                   <option value='sol'> 🪙 Solana </option>
-                  <option value='sui'> 🪙 Solana </option>
+                  <option value='sui'> 🪙 Sui </option>
                 </select>
               </div>
 
