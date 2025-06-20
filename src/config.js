@@ -27,31 +27,35 @@ export const NetworksEVM = [
   },
   {
     // https://revoke.cash/es/learn/wallets/add-network/bnb-chain-testnet
+    // https://testnet.bscscan.com/tx/0x2743a81b2639ab5fb2fb6ccaa4a6850a906b6e1db39808eaad67c2b42534f045
     "network": "BNB Chain",
     "token": "BNB",
     "rpcUrl": "https://data-seed-prebsc-1-s1.binance.org:8545/",
-    "explorerUrl": "https://testnet.bscscan.com/",
+    "explorerUrl": "https://testnet.bscscan.com/tx/",
     "contractAddress": "0x"
   },
   {
+    // https://core.app/tools/testnet-faucet/?subnet=c&token=c
+    // https://subnets-test.avax.network/c-chain/tx/0x01cdfb13b85a09a0bc453b3d334025b2cf98c2e603140196aa042d4c939745d0
     "network": "Avalanche",
     "token": "AVAX",
     "rpcUrl": "https://api.avax-test.network/ext/bc/C/rpc",
-    "explorerUrl": "https://testnet.snowtrace.io/",
+    "explorerUrl": "https://subnets-test.avax.network/c-chain/tx/",
     "contractAddress": "0x"
   },
   {
+    // https://www.oklink.com/es-la/amoy/tx/0x45868c97c41b683aaa9949838e862d40033b1806ff26d648960751aec08a36ec
     "network": "Polygon",
     "token": "POL",
     "rpcUrl": "https://rpc-amoy.polygon.technology",
-    "explorerUrl": "https://amoy.polygonscan.com",
+    "explorerUrl": "https://www.oklink.com/es-la/amoy/tx/",
     "contractAddress": "0x"
   },
   {
     "network": "Arbitrum",
     "token": "ARB",
-    "rpcUrl": "https://arbitrum-goerli.infura.io/v3/9aa3d645ea0e47f4456a556ef2a3c154",
-    "explorerUrl": "https://goerli.arbiscan.io/",
+    "rpcUrl": "https://sepolia-rollup.arbitrum.io/rpc",
+    "explorerUrl": "https://sepolia.arbiscan.io/tx/",
     "contractAddress": "0x"
   },
   // {
