@@ -12,8 +12,7 @@ import { XRPView } from './components/XRP';
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('xrp');
-
+  const [chain, setChain] = useState('eth');
 
   return (
     <>
