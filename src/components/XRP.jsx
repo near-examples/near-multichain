@@ -10,7 +10,6 @@ import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
 const Xrp = new chainAdapters.xrp.XRP({
   rpcUrl: "wss://s.altnet.rippletest.net:51233/",
-  network: "testnet",
   contract: SIGNET_CONTRACT
 })
 
