@@ -41,7 +41,7 @@ const Navbar = () => {
      * - bg-primary: Primary theme color background
      * - container-fluid: Full-width container
      */
-    <nav className='navbar navbar-expand-lg bg-primary" data-bs-theme="light'>
+    <nav className='navbar navbar-expand-lg bg-primary' data-bs-theme="light">
       <div className='container-fluid navbar-expand-lg text-center'>
         
         {/* APPLICATION BRANDING */}
