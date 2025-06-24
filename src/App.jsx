@@ -6,13 +6,13 @@ import { BitcoinView } from './components/Bitcoin';
 import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
+import { XRPView } from './components/XRP';
 
 
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
   const [chain, setChain] = useState('eth');
-
 
   return (
     <>
@@ -67,6 +67,7 @@ function App() {
                   <option value='base'> Ξ Base </option>
                   <option value='btc'> ₿ BTC </option>
                   <option value='sol'> 🪙 Solana </option>
+                  <option value='xrp'> 🪙 XRP </option>
                 </select>
               </div>
 
@@ -83,6 +84,9 @@ function App() {
               )}
               {chain === 'sol' && (
                 <SolanaView props={{setStatus}}></SolanaView>
+              )}
+               {chain === 'xrp' && (
+                <XRPView props={{setStatus}}></XRPView>
               )}
             </div>
           </div>
