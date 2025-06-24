@@ -23,7 +23,7 @@ export function EVMView({
   const [senderAddress, setSenderAddress] = useState("");
   const [balance, setBalance] = useState("");
   const [action, setAction] = useState("transfer");
-  const [derivation, setDerivation] = useState(`${network.replace(/\s/g, '')}-1`);
+  const [derivation, setDerivation] = useState(`${network.replace(/\s/g, '').toLowerCase()}-1`);
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
   const [txCost, setTxCost] = useState("");
