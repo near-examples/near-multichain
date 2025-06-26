@@ -7,13 +7,14 @@ import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
 import { SuiView } from './components/Sui';
+import { AptosView } from './components/Aptos';
+import { XRPView } from './components/XRP';
 
 
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('eth');
-
+  const [chain, setChain] = useState('eht');
 
   return (
     <>
@@ -69,6 +70,8 @@ function App() {
                   <option value='btc'> ₿ BTC </option>
                   <option value='sol'> 🪙 Solana </option>
                   <option value='sui'> 🪙 Sui </option>
+                  <option value='apt'> Ξ Aptos </option>
+                  <option value='xrp'> 🪙 XRP </option>
                 </select>
               </div>
 
@@ -81,10 +84,16 @@ function App() {
                 }} />
               )}
               {chain === 'btc' && (
-                <BitcoinView props={{setStatus}} />
+                <BitcoinView props={{ setStatus }} />
               )}
               {chain === 'sol' && (
-                <SolanaView props={{setStatus}}></SolanaView>
+                <SolanaView props={{ setStatus }}></SolanaView>
+              )}
+              {chain === 'apt' && (
+                <AptosView props={{ setStatus }} />
+              )}
+               {chain === 'xrp' && (
+                <XRPView props={{setStatus}}></XRPView>
               )}
                {chain === 'sui' && (
                 <SuiView props={{setStatus}} />
