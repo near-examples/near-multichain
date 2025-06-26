@@ -42,13 +42,6 @@ export const NetworksEVM = [
     "rpcUrl": "https://sepolia-rollup.arbitrum.io/rpc",
     "explorerUrl": "https://sepolia.arbiscan.io/tx/",
     "contractAddress": "0x03a74694bD865437eb4f83c5ed61D22000A9f502"
-  },
-  {
-    "network": "zkSync",
-    "token": "ETHZK",
-    "rpcUrl": "https://sepolia.era.zksync.dev",
-    "explorerUrl": "https://zksync2-testnet.zkscan.io/",
-    "contractAddress": "0x2d5B67280267309D259054BB3214f74e42c8a98c"
   }
 ]
 
