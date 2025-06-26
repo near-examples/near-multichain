@@ -30,13 +30,13 @@ function App() {
       })),
     },
     {
-      label: 'Otros',
+      label: 'Other',
       options: [
         { value: 'btc', label: '₿ BTC' },
-        { value: 'sol', label: '🪙 Solana' },
-        { value: 'sui', label: '🪙 Sui' },
-        { value: 'apt', label: '🪙 Aptos' },
-        { value: 'xrp', label: '🪙 XRP' },
+        { value: 'sol', label: '◎ Solana' },
+        { value: 'sui', label: '💧 Sui' },
+        { value: 'apt', label: '≋ Aptos' },
+        { value: 'xrp', label: '✕ XRP' },
       ],
     },
   ];
