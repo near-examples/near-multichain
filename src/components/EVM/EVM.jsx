@@ -13,7 +13,7 @@ import { createPublicClient, http } from "viem";
 import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
 
 export function EVMView({
-  props: { setStatus, rpcUrl, contractAddress, explorerUrl },
+  props: { setStatus, network: { network, token, rpcUrl, explorerUrl, contractAddress } },
 }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
@@ -21,9 +21,9 @@ export function EVMView({
   const [step, setStep] = useState("request");
   const [senderLabel, setSenderLabel] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
-  const [balance, setBalance] = useState(""); // Add balance state
+  const [balance, setBalance] = useState("");
   const [action, setAction] = useState("transfer");
-  const [derivation, setDerivation] = useState("ethereum-1");
+  const [derivation, setDerivation] = useState(`${network.replace(/\s/g, '').toLowerCase()}-1`);
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
   const [txCost, setTxCost] = useState("");
@@ -63,7 +63,7 @@ export function EVMView({
         console.log(
           `Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`
         );
-        console.log(`Estimated Transaction Cost: ${formattedTxCost} ETH`);
+        console.log(`Estimated Transaction Cost: ${formattedTxCost} ${token}`);
 
         setTxCost(formattedTxCost);
         setGasPriceInGwei(formattedGasPriceInGwei);
@@ -116,12 +116,12 @@ export function EVMView({
         payloads: hashesToSign,
         path: derivationPath,
         keyType: "Ecdsa",
-        signerAccount: { 
+        signerAccount: {
           accountId: signedAccountId,
-          signAndSendTransactions 
+          signAndSendTransactions
         }
       });
-      
+
       const txSerialized = Evm.finalizeTransactionSigning({
         transaction,
         rsvSignatures,
@@ -207,7 +207,7 @@ export function EVMView({
           <div className="col-sm-10 fs-5">
             <div className="form-text text-muted ">
               {balance ? (
-                `${balance} ETH`
+                `${balance} ${token}`
               ) : (
                 <span className="text-warning">Fetching balance...</span>
               )}
@@ -232,7 +232,7 @@ export function EVMView({
       </div>
 
       {action === "transfer" ? (
-        <TransferForm ref={childRef} props={{ Evm, senderAddress, loading }} />
+        <TransferForm ref={childRef} props={{ Evm, senderAddress, loading ,token }} />
       ) : (
         <FunctionCallForm
           ref={childRef}
@@ -259,7 +259,7 @@ export function EVMView({
               </tr>
               <tr>
                 <td>{txCost}</td>
-                <td>ETH</td>
+                <td>{token}</td>
               </tr>
             </tbody>
           </table>
@@ -294,8 +294,12 @@ export function EVMView({
 EVMView.propTypes = {
   props: PropTypes.shape({
     setStatus: PropTypes.func.isRequired,
-    rpcUrl: PropTypes.string.isRequired,
-    contractAddress: PropTypes.string.isRequired,
-    explorerUrl: PropTypes.string.isRequired,
+    network: PropTypes.shape({
+      network: PropTypes.string.isRequired,
+      token: PropTypes.string.isRequired,
+      rpcUrl: PropTypes.string.isRequired,
+      explorerUrl: PropTypes.string.isRequired,
+      contractAddress: PropTypes.string.isRequired,
+    }).isRequired,
   }).isRequired,
 };
