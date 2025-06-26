@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aptos-labs/ts-sdk": "^2.0.1",
     "@ethereumjs/common": "^4.3.0",
     "@ethereumjs/tx": "^5.3.0",
     "@ethereumjs/util": "^9.0.3",
+    "@mysten/sui": "^1.30.4",
     "@near-wallet-selector/bitte-wallet": "^8.9.13",
     "@near-wallet-selector/core": "^8.9.13",
     "@near-wallet-selector/here-wallet": "^8.9.13",
@@ -26,7 +28,15 @@
     "bitcoinjs-lib": "^6.1.5",
     "bn.js": "^5.2.1",
     "bs58check": "^3.0.1",
+<<<<<<< feat/add-different-EVMs
     "chainsig.js": "^1.1.6",
+=======
+<<<<<<< feat/add-Sui-network
+    "chainsig.js": "^1.1.7",
+=======
+    "chainsig.js": "^1.1.8",
+>>>>>>> main
+>>>>>>> main
     "elliptic": "^6.5.5",
     "ethers": "^6.11.1",
     "hash.js": "^1.1.7",

@@ -7,11 +7,14 @@ import { BitcoinView } from './components/Bitcoin';
 import { MPC_CONTRACT, NetworksEVM } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
+import { SuiView } from './components/Sui';
+import { AptosView } from './components/Aptos';
+import { XRPView } from './components/XRP';
 
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('ETH');
+  const [chain, setChain] = useState('eth');
 
   const selectedNetwork = useMemo(
     () => NetworksEVM.find(n => n.token === chain),
@@ -31,6 +34,9 @@ function App() {
       options: [
         { value: 'btc', label: '₿ BTC' },
         { value: 'sol', label: '🪙 Solana' },
+        { value: 'sui', label: '🪙 Sui' },
+        { value: 'apt', label: '🪙 Aptos' },
+        { value: 'xrp', label: '🪙 XRP' },
       ],
     },
   ];
@@ -99,10 +105,19 @@ function App() {
                 }} />
               )}
               {chain === 'btc' && (
-                <BitcoinView props={{setStatus}} />
+                <BitcoinView props={{ setStatus }} />
               )}
               {chain === 'sol' && (
-                <SolanaView props={{setStatus}}></SolanaView>
+                <SolanaView props={{ setStatus }}></SolanaView>
+              )}
+              {chain === 'apt' && (
+                <AptosView props={{ setStatus }} />
+              )}
+               {chain === 'xrp' && (
+                <XRPView props={{setStatus}}></XRPView>
+              )}
+               {chain === 'sui' && (
+                <SuiView props={{setStatus}} />
               )}
             </div>
           </div>
