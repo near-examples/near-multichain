@@ -14,7 +14,7 @@ import { XRPView } from './components/XRP';
 function App() {
   const { signedAccountId } = useWalletSelector();
   const [status, setStatus] = useState('Please login to request a signature');
-  const [chain, setChain] = useState('eth');
+  const [chain, setChain] = useState('ETH');
 
   const selectedNetwork = useMemo(
     () => NetworksEVM.find(n => n.token === chain),
