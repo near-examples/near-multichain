@@ -6,6 +6,7 @@ import { BitcoinView } from './components/Bitcoin';
 import { explorerForChain, MPC_CONTRACT, RPCforChain } from './config';
 import { useWalletSelector } from '@near-wallet-selector/react-hook';
 import { SolanaView } from './components/Solana';
+import { SuiView } from './components/Sui';
 import { AptosView } from './components/Aptos';
 import { XRPView } from './components/XRP';
 
@@ -68,6 +69,7 @@ function App() {
                   <option value='base'> Ξ Base </option>
                   <option value='btc'> ₿ BTC </option>
                   <option value='sol'> 🪙 Solana </option>
+                  <option value='sui'> 🪙 Sui </option>
                   <option value='apt'> Ξ Aptos </option>
                   <option value='xrp'> 🪙 XRP </option>
                 </select>
@@ -92,6 +94,9 @@ function App() {
               )}
                {chain === 'xrp' && (
                 <XRPView props={{setStatus}}></XRPView>
+              )}
+               {chain === 'sui' && (
+                <SuiView props={{setStatus}} />
               )}
             </div>
           </div>
