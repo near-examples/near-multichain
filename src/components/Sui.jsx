@@ -5,229 +5,241 @@ import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT } from "../config";
 import { chainAdapters } from "chainsig.js";
-import { getFullnodeUrl, SuiClient } from '@mysten/sui/client'
-import { Transaction } from '@mysten/sui/transactions'
+import { getFullnodeUrl, SuiClient } from "@mysten/sui/client";
+import { Transaction } from "@mysten/sui/transactions";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 import { decimalToBigInt } from "../utils/decimalToBigInt";
 
-const rpcUrl = getFullnodeUrl('testnet')
-const suiClient = new SuiClient({ url: rpcUrl })
+const rpcUrl = getFullnodeUrl("testnet");
+const suiClient = new SuiClient({ url: rpcUrl });
 
 const Sui = new chainAdapters.sui.SUI({
   client: suiClient,
   contract: SIGNET_CONTRACT,
   rpcUrl: rpcUrl,
-})
+});
 
 export function SuiView({ props: { setStatus } }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
-  const [receiver, setReceiver] = useState("0x202fc1c421cbd6d84d632d62de50b90c1cf5564c36422a1cd00b5448b9e3d29f");
-  const [amount, setAmount] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("request");
+  const [receiverAddress, setReceiverAddress] = useState(
+    "0x202fc1c421cbd6d84d632d62de50b90c1cf5564c36422a1cd00b5448b9e3d29f",
+  );
+  const [transferAmount, setTransferAmount] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
-  const [senderPK, setSenderPK] = useState("");
+  const [senderPublicKey, setSenderPublicKey] = useState("");
 
-  const [derivation, setDerivation] = useState("sui-1");
-  const derivationPath = useDebounce(derivation, 500);
+  const [derivationPath, setDerivationPath] = useState("sui-1");
+  const debouncedDerivationPath = useDebounce(derivationPath, 500);
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
-  }, [derivation]);
+  }, [derivationPath]);
 
   useEffect(() => {
     setSuiAddress();
 
     async function setSuiAddress() {
       setStatus("Querying your address and balance");
-      setSenderAddress(`Deriving address from path ${derivationPath}...`);
+      setSenderAddress(
+        `Deriving address from path ${debouncedDerivationPath}...`,
+      );
 
-      const { address, publicKey } = await Sui.deriveAddressAndPublicKey(signedAccountId, derivationPath);
+      const { address, publicKey } = await Sui.deriveAddressAndPublicKey(
+        signedAccountId,
+        debouncedDerivationPath,
+      );
 
-      setSenderPK(publicKey);
+      setSenderPublicKey(publicKey);
       setSenderAddress(address);
 
       const balance = await Sui.getBalance(address);
 
       setStatus(
-        `Your Sui address is: ${address}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} SUI`
+        `Your Sui address is: ${address}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} SUI`,
       );
     }
-  }, [signedAccountId, derivationPath, setStatus]);
+  }, [signedAccountId, debouncedDerivationPath, setStatus]);
 
-  async function chainSignature() {
+  async function handleChainSignature() {
     setStatus("🏗️ Creating transaction");
-    
-    const tx = new Transaction()
 
-    const [coin] = tx.splitCoins(tx.gas, [decimalToBigInt(amount, 9)])
+    const transaction = new Transaction();
 
-    tx.transferObjects(
-      [coin],
-      receiver
-    )
-    tx.setSender(senderAddress)
+    const [coin] = transaction.splitCoins(transaction.gas, [
+      decimalToBigInt(transferAmount, 9),
+    ]);
 
-    const { hashesToSign, transaction } = await Sui.prepareTransactionForSigning(tx)
+    transaction.transferObjects([coin], receiverAddress);
+    transaction.setSender(senderAddress);
 
+    const { hashesToSign, transaction: preparedTransaction } =
+      await Sui.prepareTransactionForSigning(transaction);
 
     setStatus(
-      "🕒 Asking MPC to sign the transaction, this might take a while..."
+      "🕒 Asking MPC to sign the transaction, this might take a while...",
     );
 
     try {
       const rsvSignatures = await SIGNET_CONTRACT.sign({
         payloads: hashesToSign,
-        path: derivationPath,
+        path: debouncedDerivationPath,
         keyType: "Eddsa",
-        signerAccount: { 
+        signerAccount: {
           accountId: signedAccountId,
-          signAndSendTransactions 
-        }
+          signAndSendTransactions,
+        },
       });
 
       if (!rsvSignatures[0] || !rsvSignatures[0].signature) {
         throw new Error("Failed to sign transaction");
       }
 
-      const txSerialized = Sui.finalizeTransactionSigning({
-        transaction,
+      const finalizedTransaction = Sui.finalizeTransactionSigning({
+        transaction: preparedTransaction,
         rsvSignatures: rsvSignatures[0],
-        publicKey: senderPK
-      })
+        publicKey: senderPublicKey,
+      });
 
       setStatus("✅ Signed payload ready to be relayed to the Sui network");
-      setSignedTransaction(txSerialized);
-      setStep("relay");
-    } catch (e) {
-      console.log(e);
-      setStatus(`❌ Error: ${e.message}`);
-      setLoading(false);
+      setSignedTransaction(finalizedTransaction);
+      setCurrentStep("relay");
+    } catch (error) {
+      console.log(error);
+      setStatus(`❌ Error: ${error.message}`);
+      setIsLoading(false);
     }
   }
 
-  async function relayTransaction() {
-    setLoading(true);
+  async function handleRelayTransaction() {
+    setIsLoading(true);
     setStatus(
-      "🔗 Relaying transaction to the Sui network... this might take a while"
+      "🔗 Relaying transaction to the Sui network... this might take a while",
     );
 
     try {
-
-      const txHash = await Sui.broadcastTx(signedTransaction);
+      const transactionHash = await Sui.broadcastTx(signedTransaction);
 
       setStatus(
         <>
           <a
-            href={`https://suiscan.xyz/testnet/tx/${txHash.hash}`}
+            href={`https://suiscan.xyz/testnet/tx/${transactionHash.hash}`}
             target="_blank"
+            rel="noopener noreferrer"
           >
             {" "}
             ✅ Successfully Broadcasted{" "}
           </a>
-        </>
+        </>,
       );
-    } catch (e) {
-      setStatus(`❌ Error: ${e.message}`);
+    } catch (error) {
+      setStatus(`❌ Error: ${error.message}`);
     }
 
-    setStep("request");
-    setLoading(false);
+    setCurrentStep("request");
+    setIsLoading(false);
   }
 
-  const UIChainSignature = async () => {
-    setLoading(true);
-    await chainSignature();
-    setLoading(false);
+  const handleUIChainSignature = async () => {
+    setIsLoading(true);
+    await handleChainSignature();
+    setIsLoading(false);
   };
 
-  return (<>
-    <div className="alert alert-info text-center" role="alert">
-      You are working with <strong>DevTest</strong>.
-      <br />
-      You can get funds from the faucet:
-      <a
-        href="https://faucet.sui.io/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="alert-link"
-      >
-        faucet.sui.io/
-      </a>
-    </div>
-    <div className="row my-3">
-      <label className="col-sm-2 col-form-label col-form-label-sm">
-        Path:
-      </label>
-      <div className="col-sm-10">
-        <input
-          type="text"
-          className="form-control form-control-sm"
-          value={derivation}
-          onChange={(e) => setDerivation(e.target.value)}
-          disabled={loading}
-        />
-        <div className="form-text" id="eth-sender">
-          {" "}
-          {senderAddress}{" "}
+  return (
+    <>
+      <div className="alert alert-info text-center" role="alert">
+        You are working with <strong>Testnet</strong>.
+        <br />
+        You can get funds from the faucet:
+        <a
+          href="https://faucet.sui.io/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="alert-link"
+        >
+          faucet.sui.io/
+        </a>
+      </div>
+      <div className="row my-3">
+        <label className="col-sm-2 col-form-label col-form-label-sm">
+          Path:
+        </label>
+        <div className="col-sm-10">
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            value={derivationPath}
+            onChange={(e) => setDerivationPath(e.target.value)}
+            disabled={isLoading}
+          />
+          <div className="form-text" id="sui-sender">
+            {" "}
+            {senderAddress}{" "}
+          </div>
         </div>
       </div>
-    </div>
-    <div className="row mb-3">
-      <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
-      <div className="col-sm-10">
-        <input
-          type="text"
-          className="form-control form-control-sm"
-          value={receiver}
-          onChange={(e) => setReceiver(e.target.value)}
-          disabled={loading}
-        />
+      <div className="row mb-3">
+        <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
+        <div className="col-sm-10">
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            value={receiverAddress}
+            onChange={(e) => setReceiverAddress(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
       </div>
-    </div>
-    <div className="row mb-3">
-      <label className="col-sm-2 col-form-label col-form-label-sm">
-        Amount:
-      </label>
-      <div className="col-sm-10">
-        <input
-          type="number"
-          className="form-control form-control-sm"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          step="0.1"
-          min="0"
-          disabled={loading}
-        />
-        <div className="form-text"> sui units </div>
+      <div className="row mb-3">
+        <label className="col-sm-2 col-form-label col-form-label-sm">
+          Amount:
+        </label>
+        <div className="col-sm-10">
+          <div className="input-group">
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={transferAmount}
+              onChange={(e) => setTransferAmount(e.target.value)}
+              step="0.1"
+              min="0"
+              disabled={isLoading}
+            />
+            <span className="input-group-text bg-primary text-white fw-bold">
+              SUI
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div className="text-center mt-3">
-      {step === "request" && (
-        <button
-          className="btn btn-primary text-center"
-          onClick={UIChainSignature}
-          disabled={loading}
-        >
-          {" "}
-          Request Signature{" "}
-        </button>
-      )}
-      {step === "relay" && (
-        <button
-          className="btn btn-success text-center"
-          onClick={relayTransaction}
-          disabled={loading}
-        >
-          {" "}
-          Relay Transaction{" "}
-        </button>
-      )}
-    </div>
-  </>)
+      <div className="text-center mt-3">
+        {currentStep === "request" && (
+          <button
+            className="btn btn-primary text-center"
+            onClick={handleUIChainSignature}
+            disabled={isLoading}
+          >
+            {" "}
+            Request Signature{" "}
+          </button>
+        )}
+        {currentStep === "relay" && (
+          <button
+            className="btn btn-success text-center"
+            onClick={handleRelayTransaction}
+            disabled={isLoading}
+          >
+            {" "}
+            Relay Transaction{" "}
+          </button>
+        )}
+      </div>
+    </>
+  );
 }
 
 SuiView.propTypes = {

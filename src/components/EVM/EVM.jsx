@@ -13,22 +13,27 @@ import { createPublicClient, http } from "viem";
 import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
 
 export function EVMView({
-  props: { setStatus, network: { network, token, rpcUrl, explorerUrl, contractAddress } },
+  props: {
+    setStatus,
+    network: { network, token, rpcUrl, explorerUrl, contractAddress },
+  },
 }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("request");
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState("request");
   const [senderLabel, setSenderLabel] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [balance, setBalance] = useState("");
   const [action, setAction] = useState("transfer");
-  const [derivation, setDerivation] = useState(`${network.replace(/\s/g, '').toLowerCase()}-1`);
+  const [derivationPath, setDerivationPath] = useState(
+    `${network.replace(/\s/g, "").toLowerCase()}-1`,
+  );
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [gasPriceInGwei, setGasPriceInGwei] = useState("");
   const [txCost, setTxCost] = useState("");
 
-  const derivationPath = useDebounce(derivation, 1200);
+  const debouncedDerivationPath = useDebounce(derivationPath, 1200);
   const childRef = useRef();
   const web3 = new Web3(rpcUrl);
 
@@ -36,10 +41,10 @@ export function EVMView({
     transport: http(rpcUrl),
   });
 
-  const Evm = (new chainAdapters.evm.EVM({
+  const Evm = new chainAdapters.evm.EVM({
     publicClient,
-    contract: SIGNET_CONTRACT
-  }));
+    contract: SIGNET_CONTRACT,
+  });
 
   useEffect(() => {
     async function fetchEthereumGasPrice() {
@@ -61,7 +66,7 @@ export function EVMView({
         const formattedTxCost = parseFloat(txCost).toFixed(7);
 
         console.log(
-          `Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`
+          `Current Sepolia Gas Price: ${formattedGasPriceInGwei} Gwei`,
         );
         console.log(`Estimated Transaction Cost: ${formattedTxCost} ${token}`);
 
@@ -79,20 +84,20 @@ export function EVMView({
   useEffect(() => {
     resetAddressState();
     fetchEthereumAddress();
-  }, [derivationPath, signedAccountId]);
+  }, [debouncedDerivationPath, signedAccountId]);
 
   const resetAddressState = () => {
     setSenderLabel("Waiting for you to stop typing...");
     setSenderAddress(null);
     setStatus("");
     setBalance(""); // Reset balance when derivation path changes
-    setStep("request");
+    setCurrentStep("request");
   };
 
   const fetchEthereumAddress = async () => {
     const { address } = await Evm.deriveAddressAndPublicKey(
       signedAccountId,
-      derivationPath
+      debouncedDerivationPath,
     );
     setSenderAddress(address);
     setSenderLabel(address);
@@ -103,47 +108,46 @@ export function EVMView({
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");
 
-
-    const { transaction, hashesToSign } = await childRef.current.createTransaction();
+    const { transaction, hashesToSign } =
+      await childRef.current.createTransaction();
 
     setStatus(
-      `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`
+      `🕒 Asking ${MPC_CONTRACT} to sign the transaction, this might take a while`,
     );
 
     try {
-
       const rsvSignatures = await SIGNET_CONTRACT.sign({
         payloads: hashesToSign,
-        path: derivationPath,
+        path: debouncedDerivationPath,
         keyType: "Ecdsa",
         signerAccount: {
           accountId: signedAccountId,
-          signAndSendTransactions
-        }
+          signAndSendTransactions,
+        },
       });
 
       const txSerialized = Evm.finalizeTransactionSigning({
         transaction,
         rsvSignatures,
-      })
+      });
 
       setSignedTransaction(txSerialized);
 
       setStatus(
-        `✅ Signed payload ready to be relayed to the Ethereum network`
+        `✅ Signed payload ready to be relayed to the Ethereum network`,
       );
-      setStep("relay");
+      setCurrentStep("relay");
     } catch (e) {
       console.log(e);
       setStatus(`❌ Error: ${e.message}`);
-      setLoading(false);
+      setIsLoading(false);
     }
   }
 
   async function relayTransaction() {
-    setLoading(true);
+    setIsLoading(true);
     setStatus(
-      "🔗 Relaying transaction to the Ethereum network... this might take a while"
+      "🔗 Relaying transaction to the Ethereum network... this might take a while",
     );
 
     try {
@@ -154,30 +158,26 @@ export function EVMView({
             {" "}
             ✅ Successful{" "}
           </a>
-        </>
+        </>,
       );
       childRef.current.afterRelay();
     } catch (e) {
       setStatus(`❌ Error: ${e.message}`);
     }
 
-    setStep("request");
-    setLoading(false);
+    setCurrentStep("request");
+    setIsLoading(false);
   }
 
   const UIChainSignature = async () => {
-    setLoading(true);
+    setIsLoading(true);
     await chainSignature();
-    setLoading(false);
+    setIsLoading(false);
   };
 
   return (
-    <>
+    <div>
       {/* Form Inputs */}
-      <div className="row mb-0">
-        <label className="col-sm-2 col-form-label"></label>
-        <div className="col-sm-10"></div>
-      </div>
 
       <div className="input-group input-group-sm my-2 mb-2">
         <span className="input-group-text bg-primary text-white" id="chain">
@@ -186,9 +186,9 @@ export function EVMView({
         <input
           type="text"
           className="form-control form-control-sm"
-          value={derivation}
-          onChange={(e) => setDerivation(e.target.value)}
-          disabled={loading}
+          value={derivationPath}
+          onChange={(e) => setDerivationPath(e.target.value)}
+          disabled={isLoading}
         />
       </div>
 
@@ -224,7 +224,7 @@ export function EVMView({
           className="form-select"
           aria-describedby="chain"
           onChange={(e) => setAction(e.target.value)}
-          disabled={loading}
+          disabled={isLoading}
         >
           <option value="transfer">Ξ Transfer</option>
           <option value="function-call">Ξ Call Counter</option>
@@ -232,15 +232,25 @@ export function EVMView({
       </div>
 
       {action === "transfer" ? (
-        <TransferForm ref={childRef} props={{ Evm, senderAddress, loading ,token }} />
+        <TransferForm
+          ref={childRef}
+          props={{ Evm, senderAddress, isLoading, token }}
+        />
       ) : (
         <FunctionCallForm
           ref={childRef}
-          props={{ contractAddress, senderAddress, rpcUrl, web3, loading, Evm }}
+          props={{
+            contractAddress,
+            senderAddress,
+            rpcUrl,
+            web3,
+            isLoading,
+            Evm,
+          }}
         />
       )}
 
-      <div className="text-center mt-4 d-flex justify-content-center">
+      <div className="text-center d-flex justify-content-center">
         <div className="table-responsive " style={{ maxWidth: "400px" }}>
           <table className="table table-hover text-center w-auto">
             <caption className="caption-top text-center">
@@ -268,26 +278,26 @@ export function EVMView({
 
       {/* Execute Buttons */}
       <div className="d-grid gap-2">
-        {step === "request" && (
+        {currentStep === "request" && (
           <button
             className="btn btn-outline-success text-center btn-lg"
             onClick={UIChainSignature}
-            disabled={loading}
+            disabled={isLoading}
           >
             Request Signature
           </button>
         )}
-        {step === "relay" && (
+        {currentStep === "relay" && (
           <button
             className="btn btn-success text-center"
             onClick={relayTransaction}
-            disabled={loading}
+            disabled={isLoading}
           >
             Relay Transaction
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
