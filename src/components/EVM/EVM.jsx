@@ -126,12 +126,12 @@ export function EVMView({
         },
       });
 
-      const txSerialized = Evm.finalizeTransactionSigning({
+      const finalizedTransaction = Evm.finalizeTransactionSigning({
         transaction,
         rsvSignatures,
       });
 
-      setSignedTransaction(txSerialized);
+      setSignedTransaction(finalizedTransaction);
 
       setStatus(
         `✅ Signed payload ready to be relayed to the Ethereum network`,
@@ -151,10 +151,10 @@ export function EVMView({
     );
 
     try {
-      const txHash = await Evm.broadcastTx(signedTransaction);
+      const finalizedTransaction = await Evm.broadcastTx(signedTransaction);
       setStatus(
         <>
-          <a href={`${explorerUrl}${txHash.hash}`} target="_blank">
+          <a href={`${explorerUrl}${finalizedTransaction.hash}`} target="_blank">
             {" "}
             ✅ Successful{" "}
           </a>

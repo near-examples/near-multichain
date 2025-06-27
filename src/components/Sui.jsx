@@ -67,17 +67,17 @@ export function SuiView({ props: { setStatus } }) {
   async function handleChainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const transaction = new Transaction();
+    const transactionSui = new Transaction();
 
-    const [coin] = transaction.splitCoins(transaction.gas, [
+    const [coin] = transactionSui.splitCoins(transactionSui.gas, [
       decimalToBigInt(transferAmount, 9),
     ]);
 
-    transaction.transferObjects([coin], receiverAddress);
-    transaction.setSender(senderAddress);
+    transactionSui.transferObjects([coin], receiverAddress);
+    transactionSui.setSender(senderAddress);
 
-    const { hashesToSign, transaction: preparedTransaction } =
-      await Sui.prepareTransactionForSigning(transaction);
+    const { hashesToSign, transaction } =
+      await Sui.prepareTransactionForSigning(transactionSui);
 
     setStatus(
       "🕒 Asking MPC to sign the transaction, this might take a while...",
@@ -99,7 +99,7 @@ export function SuiView({ props: { setStatus } }) {
       }
 
       const finalizedTransaction = Sui.finalizeTransactionSigning({
-        transaction: preparedTransaction,
+        transaction,
         rsvSignatures: rsvSignatures[0],
         publicKey: senderPublicKey,
       });

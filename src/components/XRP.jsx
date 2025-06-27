@@ -42,7 +42,7 @@ export function XRPView({ props: { setStatus } }) {
         `Deriving address from path ${debouncedDerivationPath}...`,
       );
 
-      const { publicKey, address } = await Xrp.deriveAddressAndPublicKey(
+      const { address, publicKey } = await Xrp.deriveAddressAndPublicKey(
         signedAccountId,
         debouncedDerivationPath,
       );
