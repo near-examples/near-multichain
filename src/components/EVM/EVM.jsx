@@ -151,10 +151,10 @@ export function EVMView({
     );
 
     try {
-      const finalizedTransaction = await Evm.broadcastTx(signedTransaction);
+      const transactionHash = await Evm.broadcastTx(signedTransaction);
       setStatus(
         <>
-          <a href={`${explorerUrl}${finalizedTransaction.hash}`} target="_blank">
+          <a href={`${explorerUrl}${transactionHash.hash}`} target="_blank">
             {" "}
             ✅ Successful{" "}
           </a>
