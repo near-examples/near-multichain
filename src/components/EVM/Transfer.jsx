@@ -6,18 +6,18 @@ import { useImperativeHandle } from "react";
 import Web3 from "web3";
 
 export const TransferForm = forwardRef(
-  ({ props: { Evm, senderAddress, loading, token } }, ref) => {
-    const [receiver, setReceiver] = useState(
-      "0x72284EceE80A34BbC4c65d8A468B7771552a421b"
+  ({ props: { Evm, senderAddress, isLoading, token } }, ref) => {
+    const [receiverAddress, setReceiverAddress] = useState(
+      "0x72284EceE80A34BbC4c65d8A468B7771552a421b",
     );
-    const [amount, setAmount] = useState("0.005");
+    const [transferAmount, setTransferAmount] = useState("0.005");
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
         return await Evm.prepareTransactionForSigning({
           from: senderAddress,
-          to: receiver,
-          value: BigInt(Web3.utils.toWei(amount, "ether")),
+          to: receiverAddress,
+          value: BigInt(Web3.utils.toWei(transferAmount, "ether")),
         });
       },
       async afterRelay() {},
@@ -31,9 +31,9 @@ export const TransferForm = forwardRef(
             <input
               type="text"
               className="form-control"
-              value={receiver}
-              onChange={(e) => setReceiver(e.target.value)}
-              disabled={loading}
+              value={receiverAddress}
+              onChange={(e) => setReceiverAddress(e.target.value)}
+              disabled={isLoading}
             />
           </div>
         </div>
@@ -48,11 +48,11 @@ export const TransferForm = forwardRef(
                   <input
                     type="number"
                     className="form-control"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    value={transferAmount}
+                    onChange={(e) => setTransferAmount(e.target.value)}
                     step="0.001"
                     min="0.001"
-                    disabled={loading}
+                    disabled={isLoading}
                   />
                   <span className="input-group-text bg-warning text-white">
                     {token}
@@ -64,13 +64,13 @@ export const TransferForm = forwardRef(
         </div>
       </>
     );
-  }
+  },
 );
 
 TransferForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string,
-    loading: PropTypes.bool.isRequired,
+    isLoading: PropTypes.bool.isRequired,
     token: PropTypes.string.isRequired,
     Evm: PropTypes.shape({
       prepareTransactionForSigning: PropTypes.func.isRequired,

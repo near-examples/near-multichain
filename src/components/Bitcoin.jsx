@@ -8,137 +8,140 @@ import { chainAdapters } from "chainsig.js";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
 const btcRpcAdapter = new chainAdapters.btc.BTCRpcAdapters.Mempool(
-  "https://mempool.space/testnet4/api"
-)
+  "https://mempool.space/testnet4/api",
+);
 
 const Bitcoin = new chainAdapters.btc.Bitcoin({
   network: NetworkId,
   btcRpcAdapter,
-  contract: SIGNET_CONTRACT
-})
+  contract: SIGNET_CONTRACT,
+});
 
 export function BitcoinView({ props: { setStatus } }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
-  const [receiver, setReceiver] = useState("tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu");
-  const [amount, setAmount] = useState(1000);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("request");
+  const [receiverAddress, setReceiverAddress] = useState(
+    "tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu",
+  );
+  const [transferAmount, setTransferAmount] = useState(1000);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
-  const [senderPK, setSenderPK] = useState("");
+  const [senderPublicKey, setSenderPublicKey] = useState("");
 
-  const [derivation, setDerivation] = useState("bitcoin-1");
-  const derivationPath = useDebounce(derivation, 500);
+  const [derivationPath, setDerivationPath] = useState("bitcoin-1");
+  const debouncedDerivationPath = useDebounce(derivationPath, 500);
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
-  }, [derivation]);
+  }, [derivationPath]);
 
   useEffect(() => {
     setBtcAddress();
 
     async function setBtcAddress() {
       setStatus("Querying your address and balance");
-      setSenderAddress(`Deriving address from path ${derivationPath}...`);
+      setSenderAddress(
+        `Deriving address from path ${debouncedDerivationPath}...`,
+      );
 
       const { address, publicKey } = await Bitcoin.deriveAddressAndPublicKey(
         signedAccountId,
-        derivationPath
+        debouncedDerivationPath,
       );
       setSenderAddress(address);
-      setSenderPK(publicKey);
+      setSenderPublicKey(publicKey);
 
       const balance = await Bitcoin.getBalance(address);
 
       const bitcoinBalance = bigIntToDecimal(balance.balance, balance.decimals);
 
-      const satoshi = chainAdapters.btc.Bitcoin.toSatoshi(bitcoinBalance);
+      const satoshiAmount = chainAdapters.btc.Bitcoin.toSatoshi(bitcoinBalance);
 
       setStatus(
-        `Your Bitcoin address is: ${address}, balance: ${satoshi} satoshi`
+        `Your Bitcoin address is: ${address}, balance: ${satoshiAmount} satoshi`,
       );
     }
-  }, [signedAccountId, derivationPath, setStatus]);
+  }, [signedAccountId, debouncedDerivationPath, setStatus]);
 
-  async function chainSignature() {
+  async function handleChainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction, hashesToSign } = await Bitcoin.prepareTransactionForSigning({
-      publicKey: senderPK,
-      from: senderAddress,
-      to: receiver,
-      value: amount.toString(),
-    });
+    const { transaction, hashesToSign } =
+      await Bitcoin.prepareTransactionForSigning({
+        publicKey: senderPublicKey,
+        from: senderAddress,
+        to: receiverAddress,
+        value: transferAmount.toString(),
+      });
 
     setStatus(
-      "🕒 Asking MPC to sign the transaction, this might take a while..."
+      "🕒 Asking MPC to sign the transaction, this might take a while...",
     );
     try {
-
       const rsvSignatures = await SIGNET_CONTRACT.sign({
         payloads: hashesToSign,
-        path: derivationPath,
+        path: debouncedDerivationPath,
         keyType: "Ecdsa",
-        signerAccount: { 
+        signerAccount: {
           accountId: signedAccountId,
-          signAndSendTransactions 
-        }
+          signAndSendTransactions,
+        },
       });
 
       if (!rsvSignatures) {
         throw new Error("No signature received");
       }
 
-      const tx = Bitcoin.finalizeTransactionSigning({
+      const finalizedTransaction = Bitcoin.finalizeTransactionSigning({
         transaction,
         rsvSignatures,
       });
 
       setStatus("✅ Signed payload ready to be relayed to the Bitcoin network");
-      setSignedTransaction(tx);
-      setStep("relay");
-    } catch (e) {
-      console.log(e);
-      setStatus(`❌ Error: ${e.message}`);
-      setLoading(false);
+      setSignedTransaction(finalizedTransaction);
+      setCurrentStep("relay");
+    } catch (error) {
+      console.log(error);
+      setStatus(`❌ Error: ${error.message}`);
+      setIsLoading(false);
     }
   }
 
-  async function relayTransaction() {
-    setLoading(true);
+  async function handleRelayTransaction() {
+    setIsLoading(true);
     setStatus(
-      "🔗 Relaying transaction to the Bitcoin network... this might take a while"
+      "🔗 Relaying transaction to the Bitcoin network... this might take a while",
     );
 
     try {
-
-
-      const txHash = await Bitcoin.broadcastTx(signedTransaction);
+      const transactionHash = await Bitcoin.broadcastTx(signedTransaction);
 
       setStatus(
         <>
           <a
-            href={`https://mempool.space/es/testnet4/tx/${txHash.hash}`}
+            href={`https://mempool.space/es/testnet4/tx/${transactionHash.hash}`}
             target="_blank"
+            rel="noopener noreferrer"
           >
             {" "}
             ✅ Successfully Broadcasted{" "}
           </a>
-        </>
+        </>,
       );
-    } catch (e) {
-      setStatus(`❌ Error: ${e.message}`);
+    } catch (error) {
+      setStatus(`❌ Error: ${error.message}`);
     }
 
-    setStep("request");
-    setLoading(false);
+    setCurrentStep("request");
+    setIsLoading(false);
   }
 
-  const UIChainSignature = async () => {
-    setLoading(true);
-    await chainSignature();
-    setLoading(false);
+  const handleUIChainSignature = async () => {
+    setIsLoading(true);
+    await handleChainSignature();
+    setIsLoading(false);
   };
 
   return (
@@ -164,11 +167,11 @@ export function BitcoinView({ props: { setStatus } }) {
           <input
             type="text"
             className="form-control form-control-sm"
-            value={derivation}
-            onChange={(e) => setDerivation(e.target.value)}
-            disabled={loading}
+            value={derivationPath}
+            onChange={(e) => setDerivationPath(e.target.value)}
+            disabled={isLoading}
           />
-          <div className="form-text" id="eth-sender">
+          <div className="form-text" id="btc-sender">
             {" "}
             {senderAddress}{" "}
           </div>
@@ -180,9 +183,9 @@ export function BitcoinView({ props: { setStatus } }) {
           <input
             type="text"
             className="form-control form-control-sm"
-            value={receiver}
-            onChange={(e) => setReceiver(e.target.value)}
-            disabled={loading}
+            value={receiverAddress}
+            onChange={(e) => setReceiverAddress(e.target.value)}
+            disabled={isLoading}
           />
         </div>
       </div>
@@ -191,34 +194,38 @@ export function BitcoinView({ props: { setStatus } }) {
           Amount:
         </label>
         <div className="col-sm-10">
-          <input
-            type="number"
-            className="form-control form-control-sm"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            step="1"
-            disabled={loading}
-          />
-          <div className="form-text"> satoshi units </div>
+          <div className="input-group">
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={transferAmount}
+              onChange={(e) => setTransferAmount(e.target.value)}
+              step="1"
+              disabled={isLoading}
+            />
+            <span className="input-group-text bg-primary text-white fw-bold">
+              SAT
+            </span>
+          </div>
         </div>
       </div>
 
       <div className="text-center mt-3">
-        {step === "request" && (
+        {currentStep === "request" && (
           <button
             className="btn btn-primary text-center"
-            onClick={UIChainSignature}
-            disabled={loading}
+            onClick={handleUIChainSignature}
+            disabled={isLoading}
           >
             {" "}
             Request Signature{" "}
           </button>
         )}
-        {step === "relay" && (
+        {currentStep === "relay" && (
           <button
             className="btn btn-success text-center"
-            onClick={relayTransaction}
-            disabled={loading}
+            onClick={handleRelayTransaction}
+            disabled={isLoading}
           >
             {" "}
             Relay Transaction{" "}

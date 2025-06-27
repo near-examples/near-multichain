@@ -1,13 +1,14 @@
 export const bigIntToDecimal = (bigIntValue, decimals) => {
-    let strValue = bigIntValue.toString();
-    
-    if (strValue.length <= decimals) {
-      strValue = strValue.padStart(decimals + 1, '0');
-    }
+  let strValue = bigIntValue.toString();
 
-    const decimalPos = strValue.length - decimals;
+  if (strValue.length <= decimals) {
+    strValue = strValue.padStart(decimals + 1, "0");
+  }
 
-    const result = strValue.slice(0, decimalPos) + '.' + strValue.slice(decimalPos);
+  const decimalPos = strValue.length - decimals;
 
-    return parseFloat(result).toString();
-}
+  const result =
+    strValue.slice(0, decimalPos) + "." + strValue.slice(decimalPos);
+
+  return parseFloat(result).toString();
+};
