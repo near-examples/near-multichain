@@ -8,8 +8,8 @@ import { ABI } from "../../config";
 
 export const FunctionCallForm = forwardRef(
   (
-    { props: { contractAddress, senderAddress, loading, rpcUrl, Evm } },
-    ref
+    { props: { contractAddress, senderAddress, isLoading, rpcUrl, Evm } },
+    ref,
   ) => {
     const [number, setNumber] = useState(1000);
     const [currentNumber, setCurrentNumber] = useState("");
@@ -68,7 +68,7 @@ export const FunctionCallForm = forwardRef(
               value={number}
               onChange={(e) => setNumber(e.target.value)}
               step="1"
-              disabled={loading}
+              disabled={isLoading}
             />
             <div className="form-text">
               {" "}
@@ -78,14 +78,14 @@ export const FunctionCallForm = forwardRef(
         </div>
       </>
     );
-  }
+  },
 );
 
 FunctionCallForm.propTypes = {
   props: PropTypes.shape({
     senderAddress: PropTypes.string.isRequired,
     contractAddress: PropTypes.string.isRequired,
-    loading: PropTypes.bool.isRequired,
+    isLoading: PropTypes.bool.isRequired,
     rpcUrl: PropTypes.string.isRequired,
     Evm: PropTypes.shape({
       prepareTransactionForSigning: PropTypes.func.isRequired,

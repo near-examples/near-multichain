@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT } from "../config";
 import { chainAdapters } from "chainsig.js";
-import { Connection as SolanaConnection } from '@solana/web3.js'
+import { Connection as SolanaConnection } from "@solana/web3.js";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 import { decimalToBigInt } from "../utils/decimalToBigInt";
 
@@ -13,208 +13,224 @@ const connection = new SolanaConnection("https://api.devnet.solana.com");
 
 const Solana = new chainAdapters.solana.Solana({
   solanaConnection: connection,
-  contract: SIGNET_CONTRACT
-})
+  contract: SIGNET_CONTRACT,
+});
+
 export function SolanaView({ props: { setStatus } }) {
   const { signedAccountId, signAndSendTransactions } = useWalletSelector();
 
-  const [receiver, setReceiver] = useState("G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA");
-  const [amount, setAmount] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState("request");
+  const [receiverAddress, setReceiverAddress] = useState(
+    "G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA",
+  );
+  const [transferAmount, setTransferAmount] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState("request");
   const [signedTransaction, setSignedTransaction] = useState(null);
   const [senderAddress, setSenderAddress] = useState("");
 
-  const [derivation, setDerivation] = useState("solana-1");
-  const derivationPath = useDebounce(derivation, 500);
+  const [derivationPath, setDerivationPath] = useState("solana-1");
+  const debouncedDerivationPath = useDebounce(derivationPath, 500);
 
   useEffect(() => {
     setSenderAddress("Waiting for you to stop typing...");
-  }, [derivation]);
+  }, [derivationPath]);
 
   useEffect(() => {
-    setSolAddress();
+    setSolanaAddress();
 
-    async function setSolAddress() {
+    async function setSolanaAddress() {
       setStatus("Querying your address and balance");
-      setSenderAddress(`Deriving address from path ${derivationPath}...`);
+      setSenderAddress(
+        `Deriving address from path ${debouncedDerivationPath}...`,
+      );
 
-      const { publicKey } = await Solana.deriveAddressAndPublicKey(signedAccountId, derivationPath);
+      const { publicKey } = await Solana.deriveAddressAndPublicKey(
+        signedAccountId,
+        debouncedDerivationPath,
+      );
 
       setSenderAddress(publicKey);
 
       const balance = await Solana.getBalance(publicKey);
 
       setStatus(
-        `Your Solana address is:${publicKey}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} sol`
+        `Your Solana address is: ${publicKey}, balance: ${bigIntToDecimal(balance.balance, balance.decimals)} SOL`,
       );
     }
-  }, [signedAccountId, derivationPath, setStatus]);
+  }, [signedAccountId, debouncedDerivationPath, setStatus]);
 
-  async function chainSignature() {
+  async function handleChainSignature() {
     setStatus("🏗️ Creating transaction");
 
-    const { transaction: { transaction } } = await Solana.prepareTransactionForSigning({
+    const {
+      transaction: { transaction },
+    } = await Solana.prepareTransactionForSigning({
       from: senderAddress,
-      to: receiver,
-      amount: decimalToBigInt(amount, 9),
-    })
+      to: receiverAddress,
+      amount: decimalToBigInt(transferAmount, 9),
+    });
 
     setStatus(
-      "🕒 Asking MPC to sign the transaction, this might take a while..."
+      "🕒 Asking MPC to sign the transaction, this might take a while...",
     );
 
     try {
       const rsvSignatures = await SIGNET_CONTRACT.sign({
         payloads: [transaction.serializeMessage()],
-        path: derivationPath,
+        path: debouncedDerivationPath,
         keyType: "Eddsa",
-        signerAccount: { 
+        signerAccount: {
           accountId: signedAccountId,
-          signAndSendTransactions 
-        }
+          signAndSendTransactions,
+        },
       });
 
       if (!rsvSignatures[0] || !rsvSignatures[0].signature) {
         throw new Error("Failed to sign transaction");
       }
 
-      const txSerialized = Solana.finalizeTransactionSigning({
+      const finalizedTransaction = Solana.finalizeTransactionSigning({
         transaction,
         rsvSignatures: rsvSignatures[0],
-        senderAddress
-      })
+        senderAddress,
+      });
 
       setStatus("✅ Signed payload ready to be relayed to the Solana network");
-      setSignedTransaction(txSerialized);
-      setStep("relay");
-    } catch (e) {
-      console.log(e);
-      setStatus(`❌ Error: ${e.message}`);
-      setLoading(false);
+      setSignedTransaction(finalizedTransaction);
+      setCurrentStep("relay");
+    } catch (error) {
+      console.log(error);
+      setStatus(`❌ Error: ${error.message}`);
+      setIsLoading(false);
     }
   }
 
-  async function relayTransaction() {
-    setLoading(true);
+  async function handleRelayTransaction() {
+    setIsLoading(true);
     setStatus(
-      "🔗 Relaying transaction to the Solana network... this might take a while"
+      "🔗 Relaying transaction to the Solana network... this might take a while",
     );
 
     try {
-
-      const txHash = await Solana.broadcastTx(signedTransaction);
+      const transactionHash = await Solana.broadcastTx(signedTransaction);
 
       setStatus(
         <>
           <a
-            href={`https://explorer.solana.com/tx/${txHash.hash}?cluster=devnet`}
+            href={`https://explorer.solana.com/tx/${transactionHash.hash}?cluster=devnet`}
             target="_blank"
+            rel="noopener noreferrer"
           >
             {" "}
             ✅ Successfully Broadcasted{" "}
           </a>
-        </>
+        </>,
       );
-    } catch (e) {
-      setStatus(`❌ Error: ${e.message}`);
+    } catch (error) {
+      setStatus(`❌ Error: ${error.message}`);
     }
 
-    setStep("request");
-    setLoading(false);
+    setCurrentStep("request");
+    setIsLoading(false);
   }
 
-  const UIChainSignature = async () => {
-    setLoading(true);
-    await chainSignature();
-    setLoading(false);
+  const handleUIChainSignature = async () => {
+    setIsLoading(true);
+    await handleChainSignature();
+    setIsLoading(false);
   };
 
-  return (<>
-    <div className="alert alert-info text-center" role="alert">
-      You are working with <strong>DevTest</strong>.
-      <br />
-      You can get funds from the faucet:
-      <a
-        href="https://faucet.solana.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="alert-link"
-      >
-        faucet.solana.com/
-      </a>
-    </div>
-    <div className="row my-3">
-      <label className="col-sm-2 col-form-label col-form-label-sm">
-        Path:
-      </label>
-      <div className="col-sm-10">
-        <input
-          type="text"
-          className="form-control form-control-sm"
-          value={derivation}
-          onChange={(e) => setDerivation(e.target.value)}
-          disabled={loading}
-        />
-        <div className="form-text" id="eth-sender">
-          {" "}
-          {senderAddress}{" "}
+  return (
+    <>
+      <div className="alert alert-info text-center" role="alert">
+        You are working with <strong>DevNet</strong>.
+        <br />
+        You can get funds from the faucet:
+        <a
+          href="https://faucet.solana.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="alert-link"
+        >
+          faucet.solana.com/
+        </a>
+      </div>
+      <div className="row my-3">
+        <label className="col-sm-2 col-form-label col-form-label-sm">
+          Path:
+        </label>
+        <div className="col-sm-10">
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            value={derivationPath}
+            onChange={(e) => setDerivationPath(e.target.value)}
+            disabled={isLoading}
+          />
+          <div className="form-text" id="sol-sender">
+            {" "}
+            {senderAddress}{" "}
+          </div>
         </div>
       </div>
-    </div>
-    <div className="row mb-3">
-      <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
-      <div className="col-sm-10">
-        <input
-          type="text"
-          className="form-control form-control-sm"
-          value={receiver}
-          onChange={(e) => setReceiver(e.target.value)}
-          disabled={loading}
-        />
+      <div className="row mb-3">
+        <label className="col-sm-2 col-form-label col-form-label-sm">To:</label>
+        <div className="col-sm-10">
+          <input
+            type="text"
+            className="form-control form-control-sm"
+            value={receiverAddress}
+            onChange={(e) => setReceiverAddress(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
       </div>
-    </div>
-    <div className="row mb-3">
-      <label className="col-sm-2 col-form-label col-form-label-sm">
-        Amount:
-      </label>
-      <div className="col-sm-10">
-        <input
-          type="number"
-          className="form-control form-control-sm"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          step="0.1"
-          min="0"
-          disabled={loading}
-        />
-        <div className="form-text"> solana units </div>
+      <div className="row mb-3">
+        <label className="col-sm-2 col-form-label col-form-label-sm">
+          Amount:
+        </label>
+        <div className="col-sm-10">
+          <div className="input-group">
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={transferAmount}
+              onChange={(e) => setTransferAmount(e.target.value)}
+              step="0.1"
+              min="0"
+              disabled={isLoading}
+            />
+            <span className="input-group-text bg-primary text-white fw-bold">
+              SOL
+            </span>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div className="text-center mt-3">
-      {step === "request" && (
-        <button
-          className="btn btn-primary text-center"
-          onClick={UIChainSignature}
-          disabled={loading}
-        >
-          {" "}
-          Request Signature{" "}
-        </button>
-      )}
-      {step === "relay" && (
-        <button
-          className="btn btn-success text-center"
-          onClick={relayTransaction}
-          disabled={loading}
-        >
-          {" "}
-          Relay Transaction{" "}
-        </button>
-      )}
-    </div>
-  </>)
+      <div className="text-center mt-3">
+        {currentStep === "request" && (
+          <button
+            className="btn btn-primary text-center"
+            onClick={handleUIChainSignature}
+            disabled={isLoading}
+          >
+            {" "}
+            Request Signature{" "}
+          </button>
+        )}
+        {currentStep === "relay" && (
+          <button
+            className="btn btn-success text-center"
+            onClick={handleRelayTransaction}
+            disabled={isLoading}
+          >
+            {" "}
+            Relay Transaction{" "}
+          </button>
+        )}
+      </div>
+    </>
+  );
 }
 
 SolanaView.propTypes = {
