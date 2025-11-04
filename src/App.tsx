@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from "react";
-import Select from "react-select";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import Select, { SingleValue } from "react-select";
 
 import Navbar from "./components/Navbar";
-import ChainIcon from "./components/ChainIcon";
+import ChainIcon, { iconMapping } from "./components/ChainIcon";
+
 import LoadingSpinner from "./components/LoadingSpinner";
 import StatusMessage from "./components/StatusMessage";
 import { EVMView } from "./components/EVM/EVM";
@@ -11,10 +12,27 @@ import { SolanaView } from "./components/Solana";
 import { SuiView } from "./components/Sui";
 import { AptosView } from "./components/Aptos";
 import { XRPView } from "./components/XRP";
+
 import { CHAIN_ICONS, MPC_CONTRACT, NetworksEVM } from "./config";
 import { useWalletSelector } from "@near-wallet-selector/react-hook";
 
-const otherChains = [
+type ChainOption = {
+  value: string;
+  label: JSX.Element;
+};
+
+type ChainGroup = {
+  label: string;
+  options: ChainOption[];
+};
+
+interface OtherChain {
+  value: string;
+  label: string;
+  component: React.ComponentType<{ setStatus: (status: string | JSX.Element, isLoading?: boolean) => void }>;
+}
+
+const otherChains: OtherChain[] = [
   { value: "BTC", label: "Bitcoin", component: BitcoinView },
   { value: "SOL", label: "Solana", component: SolanaView },
   { value: "SUI", label: "Sui", component: SuiView },
@@ -22,65 +40,75 @@ const otherChains = [
   { value: "XRP", label: "XRP", component: XRPView },
 ];
 
-function App() {
-  const { signedAccountId, isLoading: isWalletLoading } = useWalletSelector();
-  const [status, setStatus] = useState("Please login to request a signature");
+export default function App() {
+  const { signedAccountId } = useWalletSelector();
+
+  // Local wallet loading state
+  const [isWalletLoading, setIsWalletLoading] = useState(true);
+
+  // Detect when wallet connection is ready
+  useEffect(() => {
+    if (signedAccountId !== undefined) {
+      setIsWalletLoading(false);
+    }
+  }, [signedAccountId]);
+
+  const [status, setStatus] = useState<string | JSX.Element>("Please login to request a signature");
   const [selectedChain, setSelectedChain] = useState("ETH");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const selectedNetwork = useMemo(
-    () => NetworksEVM.find((network) => network.token === selectedChain),
-    [selectedChain],
-  );
-
-  const handleSetStatus = useCallback((newStatus, isLoading = false) => {
+  const handleSetStatus = useCallback((newStatus: string | JSX.Element, loading = false) => {
     setStatus(newStatus);
-    setIsProcessing(isLoading);
+    setIsProcessing(loading);
   }, []);
 
-  const createChainOption = (value, label, altText = label) => ({
-    value,
-    label: (
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <ChainIcon iconSlug={CHAIN_ICONS[value]} alt={altText} />
-        {label}
-      </div>
-    ),
-  });
+  const selectedNetwork = useMemo(
+    () => NetworksEVM.find((network) => network.token === selectedChain),
+    [selectedChain]
+  );
 
-  const chainOptions = [
+const createChainOption = (value: string, label: string, altText = label): ChainOption => ({
+  value,
+  label: (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      <ChainIcon
+        iconSlug={CHAIN_ICONS[value] as keyof typeof iconMapping} 
+        alt={altText}
+      />
+      <span style={{ marginLeft: 8 }}>{label}</span>
+    </div>
+  ),
+});
+
+
+  const chainOptions: ChainGroup[] = [
     {
       label: "EVM Networks",
       options: NetworksEVM.map((network) =>
-        createChainOption(network.token, network.network),
+        createChainOption(network.token, network.network)
       ),
     },
     {
       label: "Other Blockchains",
-      options: otherChains.map(({ value, label }) =>
-        createChainOption(value, label),
-      ),
+      options: otherChains.map(({ value, label }) => createChainOption(value, label)),
     },
   ];
 
   const renderChainView = () => {
-    const commonProps = { setStatus: handleSetStatus };
-
+    // EVM Networks
     if (selectedNetwork) {
-      return (
-        <EVMView
-          key={selectedChain}
-          props={{ ...commonProps, network: selectedNetwork }}
-        />
-      );
+      return <EVMView
+        key={selectedChain}
+        network={selectedNetwork!}
+        setStatus={handleSetStatus}
+      />;
     }
 
-    const chainConfig = otherChains.find(
-      (chain) => chain.value === selectedChain,
-    );
+    // Other Blockchains
+    const chainConfig = otherChains.find((chain) => chain.value === selectedChain);
     if (chainConfig) {
       const ChainComponent = chainConfig.component;
-      return <ChainComponent props={commonProps} />;
+      return <ChainComponent setStatus={handleSetStatus} />;
     }
 
     return null;
@@ -89,6 +117,7 @@ function App() {
   return (
     <>
       <Navbar />
+
       <div className="container text-light d-flex flex-column justify-content-center align-items-center vh-75">
         <div
           className="alert alert-light w-auto text-center shadow-sm border-0 mb-4"
@@ -119,6 +148,7 @@ function App() {
             </div>
           </div>
         )}
+
         {signedAccountId && !isWalletLoading && (
           <div
             className="card mb-4 shadow"
@@ -131,6 +161,7 @@ function App() {
                 <code className="text-light">{signedAccountId}</code>
               </h6>
             </div>
+
             <div className="card-body p-4">
               <div className="input-group input-group-sm mb-4">
                 <span className="input-group-text bg-secondary text-white">
@@ -156,16 +187,19 @@ function App() {
                   value={chainOptions
                     .flatMap((group) => group.options)
                     .find((option) => option.value === selectedChain)}
-                  onChange={(option) => setSelectedChain(option.value)}
-                  isOptionDisabled={(option) => option.isDisabled}
+                  onChange={(option: SingleValue<ChainOption>) =>
+                    option && setSelectedChain(option.value)
+                  }
                   placeholder="Choose a blockchain..."
                   isSearchable
                 />
               </div>
+
               <div className="border-top pt-4">{renderChainView()}</div>
             </div>
           </div>
         )}
+
         <StatusMessage status={status} isLoading={isProcessing} />
 
         {signedAccountId && (
@@ -188,5 +222,3 @@ function App() {
     </>
   );
 }
-
-export default App;

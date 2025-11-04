@@ -1,8 +1,8 @@
-export const decimalToBigInt = (decimalValue, decimals) => {
+export const decimalToBigInt = (decimalValue: string | number, decimals: number): bigint => {
   const strValue = decimalValue.toString();
-  const decimalPointIndex = strValue.indexOf(".") || strValue.indexOf(",");
+  const decimalPointIndex = strValue.indexOf(".") !== -1 ? strValue.indexOf(".") : strValue.indexOf(",");
 
-  let integerPart, fractionalPart;
+  let integerPart: string, fractionalPart: string;
 
   if (decimalPointIndex === -1) {
     integerPart = strValue;

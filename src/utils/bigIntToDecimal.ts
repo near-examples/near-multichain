@@ -1,4 +1,4 @@
-export const bigIntToDecimal = (bigIntValue, decimals) => {
+export const bigIntToDecimal = (bigIntValue: bigint | number | string, decimals: number): string => {
   let strValue = bigIntValue.toString();
 
   if (strValue.length <= decimals) {
@@ -7,8 +7,7 @@ export const bigIntToDecimal = (bigIntValue, decimals) => {
 
   const decimalPos = strValue.length - decimals;
 
-  const result =
-    strValue.slice(0, decimalPos) + "." + strValue.slice(decimalPos);
+  const result = strValue.slice(0, decimalPos) + "." + strValue.slice(decimalPos);
 
   return parseFloat(result).toString();
 };

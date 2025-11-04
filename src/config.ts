@@ -1,6 +1,16 @@
 import { contracts } from "chainsig.js";
 
-export const NetworksEVM = [
+// 1️⃣ Type for EVM networks
+export interface EVMNetwork {
+  network: string;
+  token: string;
+  rpcUrl: string;
+  explorerUrl: string;
+  contractAddress: string;
+}
+
+// 2️⃣ Networks configuration
+export const NetworksEVM: EVMNetwork[] = [
   {
     network: "Ethereum",
     token: "ETH",
@@ -45,7 +55,8 @@ export const NetworksEVM = [
   },
 ];
 
-export const NetworkId = "testnet";
+// 3️⃣ NEAR configuration
+export const NetworkId = "testnet" as const;
 export const MPC_CONTRACT = "v1.signer-prod.testnet";
 export const MPC_KEY =
   "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3";
@@ -55,15 +66,30 @@ export const SIGNET_CONTRACT = new contracts.ChainSignatureContract({
   contractId: MPC_CONTRACT,
 });
 
-export const ABI = [
+// 4️⃣ ABI type
+export interface ABIInput {
+  internalType: string;
+  name: string;
+  type: string;
+}
+
+export interface ABIOutput {
+  internalType: string;
+  name: string;
+  type: string;
+}
+
+export interface ABIItem {
+  inputs: ABIInput[];
+  name: string;
+  outputs: ABIOutput[];
+  stateMutability: "nonpayable" | "view" | "payable";
+  type: "function" | "constructor" | "event";
+}
+
+export const ABI: ABIItem[] = [
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "_num",
-        type: "uint256",
-      },
-    ],
+    inputs: [{ internalType: "uint256", name: "_num", type: "uint256" }],
     name: "set",
     outputs: [],
     stateMutability: "nonpayable",
@@ -72,32 +98,25 @@ export const ABI = [
   {
     inputs: [],
     name: "get",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [],
     name: "num",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
 ];
 
-export const CHAIN_ICONS = {
+// 5️⃣ Chain icons type
+export interface ChainIcons {
+  [key: string]: string;
+}
+
+export const CHAIN_ICONS: ChainIcons = {
   ETH: "ethereum",
   BASE: "base",
   BNB: "binance",
