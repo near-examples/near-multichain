@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../providers/use-near-wallet";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT } from "../config";
@@ -17,7 +17,7 @@ const Solana = new chainAdapters.solana.Solana({
 });
 
 export function SolanaView({ props: { setStatus } }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useNearWallet();
 
   const [receiverAddress, setReceiverAddress] = useState(
     "G58AYKiiNy7wwjPAeBAQWTM6S1kJwP3MQ3wRWWhhSJxA",
@@ -64,6 +64,7 @@ export function SolanaView({ props: { setStatus } }) {
 
     const {
       transaction: { transaction },
+      hashesToSign,
     } = await Solana.prepareTransactionForSigning({
       from: senderAddress,
       to: receiverAddress,
@@ -76,7 +77,7 @@ export function SolanaView({ props: { setStatus } }) {
 
     try {
       const rsvSignatures = await SIGNET_CONTRACT.sign({
-        payloads: [transaction.serializeMessage()],
+        payloads: hashesToSign,
         path: debouncedDerivationPath,
         keyType: "Eddsa",
         signerAccount: {

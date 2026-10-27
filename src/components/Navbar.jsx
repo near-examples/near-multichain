@@ -1,8 +1,8 @@
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../providers/use-near-wallet";
 import Logo from "../assets/logo-black.svg";
 
 const Navbar = () => {
-  const { signIn, signOut, signedAccountId } = useWalletSelector();
+  const { signIn, signOut, signedAccountId } = useNearWallet();
 
   return (
     <nav className='navbar navbar-expand-lg bg-primary" data-bs-theme="light'>

@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../providers/use-near-wallet";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT } from "../config";
@@ -20,7 +20,7 @@ const Sui = new chainAdapters.sui.SUI({
 });
 
 export function SuiView({ props: { setStatus } }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useNearWallet();
 
   const [receiverAddress, setReceiverAddress] = useState(
     "0x202fc1c421cbd6d84d632d62de50b90c1cf5564c36422a1cd00b5448b9e3d29f",

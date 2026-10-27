@@ -12,7 +12,7 @@ import { SuiView } from "./components/Sui";
 import { AptosView } from "./components/Aptos";
 import { XRPView } from "./components/XRP";
 import { CHAIN_ICONS, MPC_CONTRACT, NetworksEVM } from "./config";
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "./providers/use-near-wallet";
 
 const otherChains = [
   { value: "BTC", label: "Bitcoin", component: BitcoinView },
@@ -23,7 +23,7 @@ const otherChains = [
 ];
 
 function App() {
-  const { signedAccountId, isLoading: isWalletLoading } = useWalletSelector();
+  const { signedAccountId, isLoading: isWalletLoading } = useNearWallet();
   const [status, setStatus] = useState("Please login to request a signature");
   const [selectedChain, setSelectedChain] = useState("ETH");
   const [isProcessing, setIsProcessing] = useState(false);

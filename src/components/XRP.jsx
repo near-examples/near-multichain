@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../providers/use-near-wallet";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT } from "../config";
@@ -14,7 +14,7 @@ const Xrp = new chainAdapters.xrp.XRP({
 });
 
 export function XRPView({ props: { setStatus } }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useNearWallet();
 
   const [receiverAddress, setReceiverAddress] = useState(
     "rnUbjwGJzDWh66xoavXnXBt4YWdGmeyE6Z",
