@@ -7,47 +7,23 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^2.0.1",
-    "@ethereumjs/common": "^4.3.0",
-    "@ethereumjs/tx": "^5.3.0",
-    "@ethereumjs/util": "^9.0.3",
     "@mysten/sui": "^1.30.4",
-    "@near-wallet-selector/bitte-wallet": "^9.0.3",
-    "@near-wallet-selector/core": "^9.0.3",
-    "@near-wallet-selector/here-wallet": "^9.0.3",
-    "@near-wallet-selector/meteor-wallet": "^9.0.3",
-    "@near-wallet-selector/modal-ui": "^9.0.3",
-    "@near-wallet-selector/my-near-wallet": "^9.0.3",
-    "@near-wallet-selector/react-hook": "^9.0.3",
-    "@vitejs/plugin-react": "^4.2.1",
-    "axios": "^1.6.8",
-    "bech32": "^2.0.0",
-    "bitcoinjs-lib": "^6.1.5",
-    "bn.js": "^5.2.1",
-    "bs58check": "^3.0.1",
     "chainsig.js": "^1.1.8",
-    "elliptic": "^6.5.5",
     "ethers": "^6.11.1",
-    "hash.js": "^1.1.7",
-    "js-sha3": "^0.9.3",
-    "keccak": "^3.0.4",
-    "multichain-tools": "4.0.0",
-    "near-api-js": "^5.0.0",
+    "near-api-js": "^7.4.0",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-select": "^5.10.1",
-    "rxjs": "^7.8.1",
-    "secp256k1": "3.4.0",
     "viem": "^2.28.1",
-    "vite-plugin-node-polyfills": "^0.21.0",
-    "web3": "^4.6.0"
-  },
-  "overrides": {
-    "near-api-js": "^5.0.0"
+    "web3": "^4.6.0",
+    "@hot-labs/near-connect": "^0.12.0",
+    "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {
     "@types/react": "^18.2.64",
@@ -56,6 +32,11 @@
     "eslint-plugin-react": "^7.34.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "vite": "^5.1.6"
+    "vite": "^5.1.6",
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite-plugin-node-polyfills": "^0.21.0"
+  },
+  "engines": {
+    "node": ">=22.22.2"
   }
 }

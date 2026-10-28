@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../providers/use-near-wallet";
 import { useEffect, useState } from "react";
 import { useDebounce } from "../hooks/debounce";
 import { SIGNET_CONTRACT } from "../config";
@@ -21,7 +21,7 @@ const Aptos = new chainAdapters.aptos.Aptos({
 });
 
 export function AptosView({ props: { setStatus } }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useNearWallet();
 
   const [receiverAddress, setReceiverAddress] = useState(
     "0x3b0c3efaa16f5c7c53d3ca9c12622c90542ff36485f7f713ba8e76756a3fbbea",

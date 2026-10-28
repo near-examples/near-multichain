@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import PropTypes from "prop-types";
 
 import { useDebounce } from "../../hooks/debounce";
@@ -7,7 +7,7 @@ import { FunctionCallForm } from "./FunctionCall";
 import Web3 from "web3";
 
 import { SIGNET_CONTRACT, MPC_CONTRACT } from "../../config";
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../../providers/use-near-wallet";
 import { chainAdapters } from "chainsig.js";
 import { createPublicClient, http } from "viem";
 import { bigIntToDecimal } from "../../utils/bigIntToDecimal";
@@ -18,7 +18,7 @@ export function EVMView({
     network: { network, token, rpcUrl, explorerUrl, contractAddress },
   },
 }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useNearWallet();
 
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState("request");
@@ -35,16 +35,16 @@ export function EVMView({
 
   const debouncedDerivationPath = useDebounce(derivationPath, 1200);
   const childRef = useRef();
-  const web3 = new Web3(rpcUrl);
+  const web3 = useMemo(() => new Web3(rpcUrl), [rpcUrl]);
 
-  const publicClient = createPublicClient({
+  const publicClient = useMemo(() => createPublicClient({
     transport: http(rpcUrl),
-  });
+  }), [rpcUrl]);
 
-  const Evm = new chainAdapters.evm.EVM({
+  const Evm = useMemo(() => new chainAdapters.evm.EVM({
     publicClient,
     contract: SIGNET_CONTRACT,
-  });
+  }), [publicClient]);
 
   useEffect(() => {
     async function fetchEthereumGasPrice() {
@@ -78,32 +78,28 @@ export function EVMView({
     }
 
     fetchEthereumGasPrice();
-  }, []);
+  }, [web3, token]);
 
-  // Handle changes to derivation path and query Ethereum address and balance
+  // Refresh the derived address when the account or derivation path changes.
   useEffect(() => {
-    resetAddressState();
-    fetchEthereumAddress();
-  }, [debouncedDerivationPath, signedAccountId]);
-
-  const resetAddressState = () => {
+    let active = true;
     setSenderLabel("Waiting for you to stop typing...");
     setSenderAddress(null);
     setStatus("");
-    setBalance(""); // Reset balance when derivation path changes
+    setBalance("");
     setCurrentStep("request");
-  };
-
-  const fetchEthereumAddress = async () => {
-    const { address } = await Evm.deriveAddressAndPublicKey(
-      signedAccountId,
-      debouncedDerivationPath,
-    );
-    setSenderAddress(address);
-    setSenderLabel(address);
-    const balance = await Evm.getBalance(address);
-    setBalance(bigIntToDecimal(balance.balance, balance.decimals));
-  };
+    const load = async () => {
+      const { address } = await Evm.deriveAddressAndPublicKey(signedAccountId, debouncedDerivationPath);
+      const balance = await Evm.getBalance(address);
+      if (active) {
+        setSenderAddress(address);
+        setSenderLabel(address);
+        setBalance(bigIntToDecimal(balance.balance, balance.decimals));
+      }
+    };
+    load().catch((error) => { if (active) setStatus(`Error: ${error.message}`); });
+    return () => { active = false; };
+  }, [Evm, debouncedDerivationPath, signedAccountId, setStatus]);
 
   async function chainSignature() {
     setStatus("🏗️ Creating transaction");

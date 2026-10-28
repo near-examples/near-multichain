@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useDebounce } from "../hooks/debounce";
 import PropTypes from "prop-types";
 import { SIGNET_CONTRACT, NetworkId } from "../config";
-import { useWalletSelector } from "@near-wallet-selector/react-hook";
+import { useNearWallet } from "../providers/use-near-wallet";
 import { chainAdapters } from "chainsig.js";
 import { bigIntToDecimal } from "../utils/bigIntToDecimal";
 
@@ -18,7 +18,7 @@ const Bitcoin = new chainAdapters.btc.Bitcoin({
 });
 
 export function BitcoinView({ props: { setStatus } }) {
-  const { signedAccountId, signAndSendTransactions } = useWalletSelector();
+  const { signedAccountId, signAndSendTransactions } = useNearWallet();
 
   const [receiverAddress, setReceiverAddress] = useState(
     "tb1qzm5r6xhee7upsa9avdmpp32r6g5e87tsrwjahu",

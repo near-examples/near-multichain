@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
@@ -14,17 +14,16 @@ export const FunctionCallForm = forwardRef(
     const [number, setNumber] = useState(1000);
     const [currentNumber, setCurrentNumber] = useState("");
 
-    const provider = new JsonRpcProvider(rpcUrl);
-    const contract = new Contract(contractAddress, ABI, provider);
+    const contract = useMemo(() => new Contract(contractAddress, ABI, new JsonRpcProvider(rpcUrl)), [contractAddress, rpcUrl]);
 
-    const getNumber = async () => {
+    const getNumber = useCallback(async () => {
       const result = await contract.get();
       setCurrentNumber(String(result));
-    };
+    }, [contract]);
 
     useEffect(() => {
       getNumber();
-    }, []);
+    }, [getNumber]);
 
     useImperativeHandle(ref, () => ({
       async createTransaction() {
